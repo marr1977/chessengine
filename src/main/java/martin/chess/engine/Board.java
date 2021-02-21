@@ -482,6 +482,7 @@ public class Board {
 		if (takenPiece != null) {
 			takenPieceIdx = move.idxTo;
 		} else if (piece.type == PieceType.PAWN && move.idxTo == currentState.enPassantTargetIdx) {
+			// Find the pawn
 			int takenRank = piece.color == Color.WHITE ? newRank - 1 : newRank + 1;
 			takenPieceIdx = getArrayIdx(takenRank, newFile);
 			takenPiece = board[takenPieceIdx];
