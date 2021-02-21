@@ -17,4 +17,14 @@ public enum PieceType {
 	public char getShortName(Color color) {
 		return color == Color.WHITE ? Character.toUpperCase(shortName) : shortName;
 	}
+
+	public static PieceType fromShortName(char shortName) {
+		for (var val : values()) {
+			if (val.shortName == shortName) {
+				return val;
+			}
+		}
+			
+		throw new IllegalArgumentException("No such piece: " + shortName);
+	}
 }

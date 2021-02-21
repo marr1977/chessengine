@@ -3,7 +3,6 @@ package martin.chess.engine;
 public class Move {
 	int idxFrom;
 	int idxTo;
-	int takenPieceIdx = -1;
 	
 	// Contains the rook data in a castleing move
 	int additionalIdxFrom = -1;
@@ -16,29 +15,47 @@ public class Move {
 		this.idxTo = idxTo;
 	}
 	
-	public Move(int idxFrom, int idxTo, int takenPieceIdx) {
+	public Move(int idxFrom, int idxTo, PieceType queeningPiece) {
 		this(idxFrom, idxTo);
-		this.takenPieceIdx = takenPieceIdx;
-	}
-	
-	public Move(int idxFrom, int idxTo, int takenPieceIdx, PieceType queeningPiece) {
-		this(idxFrom, idxTo, takenPieceIdx);
 		this.queeningPiece = queeningPiece;
 	}
 	
 	public Move(String string) {
 		idxFrom = Algebraic.fromAlgebraic(string);
 		idxTo = Algebraic.fromAlgebraic(string, 2);
+		
+		if (string.length() > 4) {
+			queeningPiece = PieceType.fromShortName(string.charAt(4));
+		}
 	}
 
 	@Override
 	public String toString() {
-//		String val = Algebraic.toAlgebraic(idxFrom) + " => " + Algebraic.toAlgebraic(idxTo);
-//		
-//		if (takenPieceIdx != -1) {
-//			val += " (take on " + Algebraic.toAlgebraic(takenPieceIdx) + ")";
-//		}
-		//return val;
 		return Algebraic.toAlgebraic(idxFrom) + Algebraic.toAlgebraic(idxTo) + (queeningPiece == null ? "" : queeningPiece.getShortName(Color.BLACK));
+	}
+	
+	@Override
+	public boolean equals(Object obj) {
+		if (!(obj instanceof Move)) {
+			return false;
+		}
+		
+		Move other = (Move) obj;
+		return 
+				other.idxFrom == idxFrom && other.idxTo == idxTo && 
+				other.additionalIdxFrom == additionalIdxFrom && other.additionalIdxTo == additionalIdxTo;
+	}
+	
+	@Override
+	public int hashCode() {
+		return idxFrom + idxTo;
+	}
+	
+	public int getIdxFrom() {
+		return idxFrom;
+	}
+	
+	public int getIdxTo() {
+		return idxTo;
 	}
 }

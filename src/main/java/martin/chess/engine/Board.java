@@ -105,6 +105,8 @@ public class Board {
 	private List<Move> availableMoves;
 
 	private boolean logging = true;
+
+	private boolean validateMoves;
 	
 	public Board() {
 		this("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
@@ -313,7 +315,7 @@ public class Board {
 			// Go forward one step?
 			int fwdIndex1 = getArrayIdx(rank + forwardRank, file);
 			if (fwdIndex1 != -1 && null == board[fwdIndex1]) {
-				addPawnMoves(moves, fromIdx, fwdIndex1, -1);
+				addPawnMoves(moves, fromIdx, fwdIndex1);
 			}
 			
 			boolean hasMoved = 
@@ -324,7 +326,7 @@ public class Board {
 				// Go forward two steps?
 				int fwdIndex2 = getArrayIdx(rank + 2 * forwardRank, file);
 				if (fwdIndex2 != -1 && null == board[fwdIndex1] && null == board[fwdIndex2]) {
-					addPawnMoves(moves, fromIdx, fwdIndex2, -1);
+					addPawnMoves(moves, fromIdx, fwdIndex2);
 				}
 			}
 			
@@ -340,11 +342,11 @@ public class Board {
 	private void getPawnCaptureMove(Piece piece, int fromIdx, List<Move> moves, int takeIdx) {
 		Piece takeLeftPiece = board[takeIdx];
 		if (takeLeftPiece != null && takeLeftPiece.color != piece.color) {
-			addPawnMoves(moves, fromIdx, takeIdx, takeIdx);
+			addPawnMoves(moves, fromIdx, takeIdx);
 		}
 
 		if (currentState.enPassantTargetIdx == takeIdx) {
-			addPawnMoves(moves, fromIdx, currentState.enPassantTargetIdx, -1);
+			addPawnMoves(moves, fromIdx, currentState.enPassantTargetIdx);
 		}
 	}
 
@@ -358,15 +360,15 @@ public class Board {
 	 *  - Queen to rook
 	 *  
 	 */
-	private void addPawnMoves(List<Move> moves, int fromIdx, int toIdx, int takeIdx) {
+	private void addPawnMoves(List<Move> moves, int fromIdx, int toIdx) {
 		int toRank = toIdx / 8;
 		
 		if (toRank == 7 || toRank == 0) {
 			for (var type : QUEENING_PIECES) {
-				moves.add(new Move(fromIdx, toIdx, takeIdx, type));
+				moves.add(new Move(fromIdx, toIdx, type));
 			}
 		} else {
-			moves.add(new Move(fromIdx, toIdx, takeIdx));
+			moves.add(new Move(fromIdx, toIdx));
 		}
 	}
 
@@ -423,6 +425,7 @@ public class Board {
 	}
 
 	private boolean wouldBeInCheck(Color color, Move move) {
+		// Super ugly..
 		doMove(move, false);
 		boolean inCheck = isInCheck(color);
 		undoLastMove();
@@ -450,23 +453,45 @@ public class Board {
 	}
 
 	public void move(Move move) {
+		if (validateMoves && !availableMoves.contains(move)) {
+			throw new IllegalArgumentException("Move is illegal");
+		}
+		
 		doMove(move, true);
 		
 		updateAvailableMoves();
 	}
 	
-	private void doMove(Move move, boolean log) {
-		if (log) {
+	private void doMove(Move move, boolean realMove) {
+		if (realMove) {
 			logInfo("Performing move " + move + " in state: " + FENNotation.toString(this));
 		}
+		
+		int oldRank = move.idxFrom / 8;
+		int oldFile = move.idxFrom % 8;
+	
+		int newRank = move.idxTo / 8;
+		int newFile = move.idxTo % 8;
 		
 		Piece piece = board[move.idxFrom];
 		board[move.idxFrom] = null;
 		
-		Piece takenPiece = null;
-		if (move.takenPieceIdx != -1) {
-			takenPiece = board[move.takenPieceIdx];
-			board[move.takenPieceIdx] = null;
+		Piece takenPiece = board[move.idxTo];
+		int takenPieceIdx = -1;
+		
+		if (takenPiece != null) {
+			takenPieceIdx = move.idxTo;
+		} else if (piece.type == PieceType.PAWN && move.idxTo == currentState.enPassantTargetIdx) {
+			int takenRank = piece.color == Color.WHITE ? newRank - 1 : newRank + 1;
+			takenPieceIdx = getArrayIdx(takenRank, newFile);
+			takenPiece = board[takenPieceIdx];
+			if (takenPiece == null || takenPiece.type != PieceType.PAWN) {
+				throw new RuntimeException("enpassant capture of non-pawn");
+			}
+		}
+		
+		if (takenPieceIdx != -1) {
+			board[takenPieceIdx] = null;
 		}
 
 		// Check queening and replace piece with new piece
@@ -489,7 +514,7 @@ public class Board {
 		historyEntry.originalPieceMoved = originalPieceMoved;
 		historyEntry.state = new BoardState(currentState);
 		historyEntry.takenPiece = takenPiece;
-		historyEntry.takenPieceIdx = move.takenPieceIdx;
+		historyEntry.takenPieceIdx = takenPieceIdx;
 		history.add(historyEntry);
 		
 		// Adjust half move clock
@@ -503,10 +528,6 @@ public class Board {
 		// Check if this is a pawn moving two steps forward, update en-passant square
 		//
 		if (piece.type == PieceType.PAWN) {
-			int oldFile = move.idxFrom % 8;
-			
-			int oldRank = move.idxFrom / 8;
-			int newRank = move.idxTo / 8;
 			if (oldRank - newRank == 2) {
 				// Black moving
 				currentState.enPassantTargetIdx = getArrayIdx(newRank + 1, oldFile);
@@ -523,16 +544,18 @@ public class Board {
 		//
 		// Update castling ability
 		//
-		CastlingAbility ca = currentState.colorToMove == Color.WHITE ? currentState.whiteCastling : currentState.blackCastling;
-		if (piece.type == PieceType.KING) {
-			ca.canCastleKingSide = false;
-			ca.canCastleQueenSide = false;
-		} else if (piece.type == PieceType.ROOK) {
-			int fromFile = move.idxFrom % 8;
-			if (fromFile == 0) {
-				ca.canCastleQueenSide = false;
-			} else if (fromFile == 7) {
+		if (realMove) {
+			CastlingAbility ca = currentState.colorToMove == Color.WHITE ? currentState.whiteCastling : currentState.blackCastling;
+			if (piece.type == PieceType.KING) {
 				ca.canCastleKingSide = false;
+				ca.canCastleQueenSide = false;
+			} else if (piece.type == PieceType.ROOK) {
+				int fromFile = move.idxFrom % 8;
+				if (fromFile == 0) {
+					ca.canCastleQueenSide = false;
+				} else if (fromFile == 7) {
+					ca.canCastleKingSide = false;
+				}
 			}
 		}
 		
@@ -551,9 +574,9 @@ public class Board {
 		
 		List<Move> moves = getAvailableMoves(color == Color.WHITE ? Color.BLACK : Color.WHITE, false);
 		for (Move move : moves) {
-			if (move.takenPieceIdx != -1) {
-				Piece piece = board[move.takenPieceIdx];
-				if (piece.type == PieceType.KING) {
+			if (move.idxTo != -1) {
+				Piece piece = board[move.idxTo];
+				if (piece != null && piece.type == PieceType.KING && piece.color == color) {
 					return true;
 				}
 			}
@@ -590,7 +613,7 @@ public class Board {
 				
 				// Captures
 				if (pieceAtDest != null && pieceAtDest.color != piece.color) {
-					moves.add(new Move(fromIdx, newIdx, newIdx));
+					moves.add(new Move(fromIdx, newIdx));
 					break;
 				}
 				
@@ -658,5 +681,9 @@ public class Board {
 
 	public void setLogging(boolean logging) {
 		this.logging = logging;
+	}
+
+	public void validateMoves(boolean validateMoves) {
+		this.validateMoves = validateMoves;
 	}
 }
