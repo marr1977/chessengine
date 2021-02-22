@@ -100,12 +100,14 @@ public class Board {
 	
 	static class ColorData {
 		boolean inCheck;
-		List<Set<Integer>> attackingPathsToMyKing = new ArrayList<>();
-		Map<Integer, Set<Integer>> squaresAttackedByMe = new HashMap<>();
+		List<Set<Integer>> attackingPathsToMyKing;
+		Map<Integer, Set<Integer>> squaresAttackedByMe;
 		CastlingAbility castling;
 		
 		ColorData() {
 			castling = new CastlingAbility();
+			attackingPathsToMyKing = new ArrayList<>();
+			squaresAttackedByMe = new HashMap<>();
 		}
 		
 		ColorData(ColorData from) {
@@ -278,8 +280,8 @@ public class Board {
 	 */
 	private List<Move> getAvailableMoves(Color color, boolean considerCheck) {
 		
-		List<Move> moves = new ArrayList<>();
-		List<Move> attackingMoves = new ArrayList<>();
+		List<Move> moves = new ArrayList<>(64);
+		List<Move> attackingMoves = new ArrayList<>(64);
 		
 		for (int rank = 0; rank < 8; ++rank) {
 			for (int file = 0; file < 8; ++file) {
@@ -303,12 +305,13 @@ public class Board {
 		ColorData myData = currentState.getColorData(color);
 		ColorData opponentData = currentState.getColorData(color.getOpposite());
 				
-		Map<Integer, Set<Integer>> attackedSquares = new HashMap<>();
+		Map<Integer, Set<Integer>> attackedSquares = new HashMap<>(64);
 		for (var move : attackingMoves) {
 			attackedSquares.computeIfAbsent(move.getIdxTo(), k -> new HashSet<>()).add(move.getIdxFrom());
-			if (attackedSquares.containsKey(opponentKingIdx)) {
-				opponentData.inCheck = true;
-			}
+		}
+		
+		if (attackedSquares.containsKey(opponentKingIdx)) {
+			opponentData.inCheck = true;
 		}
 		
 		myData.squaresAttackedByMe = attackedSquares;
@@ -628,13 +631,13 @@ public class Board {
 			throw new IllegalArgumentException("Move is illegal");
 		}
 		
-		doMove(move, true);
+		doMove(move);
 		
 		updateAvailableMoves();
 	}
 	
-	private void doMove(Move move, boolean realMove) {
-		if (realMove) {
+	private void doMove(Move move) {
+		if (logging) {
 			logInfo("Performing move " + move + " in state: " + getState());
 		}
 		
@@ -721,18 +724,16 @@ public class Board {
 		//
 		// Update castling ability
 		//
-		if (realMove) {
-			CastlingAbility ca = currentState.getColorData(currentState.colorToMove).castling;
-			if (piece.type == PieceType.KING) {
-				ca.canCastleKingSide = false;
+		CastlingAbility ca = currentState.getColorData(currentState.colorToMove).castling;
+		if (piece.type == PieceType.KING) {
+			ca.canCastleKingSide = false;
+			ca.canCastleQueenSide = false;
+		} else if (piece.type == PieceType.ROOK) {
+			int fromFile = move.idxFrom % 8;
+			if (fromFile == 0) {
 				ca.canCastleQueenSide = false;
-			} else if (piece.type == PieceType.ROOK) {
-				int fromFile = move.idxFrom % 8;
-				if (fromFile == 0) {
-					ca.canCastleQueenSide = false;
-				} else if (fromFile == 7) {
-					ca.canCastleKingSide = false;
-				}
+			} else if (fromFile == 7) {
+				ca.canCastleKingSide = false;
 			}
 		}
 		
@@ -762,12 +763,12 @@ public class Board {
 	 *               false for queen/bishop/rook who can move one or more multiples of the direction vectors
 	 */
 	class PathData {
-		List<Integer> path = new ArrayList<>();
+		List<Integer> path = new ArrayList<>(8);
 		
 		// Indices into "path"
 		int opponentKingIdx = -1; 
-		List<Integer> ownPiecesIdx = new ArrayList<>();
-		List<Integer> oppPiecesIdx = new ArrayList<>();
+		List<Integer> ownPiecesBeforeKing = new ArrayList<>(8);
+		List<Integer> oppPiecesBeforeKing = new ArrayList<>(8);
 		
 		int firstPieceIdx = -1;
 		boolean firstPieceIsOurs;
@@ -787,13 +788,17 @@ public class Board {
 			if (pieceOnSquare != null) {
 				int pieceIdx = path.size() - 1;
 				
+				if (opponentKingIdx != -1) {
+					return; // Just interested in pieces before the king
+				}
+				
 				if (ourPiece.color == pieceOnSquare.color) {
-					ownPiecesIdx.add(pieceIdx);
+					ownPiecesBeforeKing.add(pieceIdx);
 				} else {
 					if (pieceOnSquare.type == PieceType.KING) {
 						opponentKingIdx = pieceIdx;
 					} else {
-						oppPiecesIdx.add(pieceIdx);
+						oppPiecesBeforeKing.add(pieceIdx);
 					}
 				}
 				if (firstPieceIdx == -1) {
@@ -815,25 +820,6 @@ public class Board {
 			return firstPieceIdx != -1 && idx == firstPieceIdx;
 		}
 		
-		public int getOwnPiecesBefore(int idx) {
-			return getPiecesBefore(ownPiecesIdx, idx);
-		}
-
-		public int getOpponentPiecesBefore(int idx) {
-			return getPiecesBefore(oppPiecesIdx, idx);
-		}
-
-		private int getPiecesBefore(List<Integer> pieceIdxs, int idx) {
-			int count = 0;
-			for (int pieceIdx : pieceIdxs) {
-				if (pieceIdx < idx) {
-					++count;
-				} else {
-					break;
-				}
-			}
-			return count;
-		}
 		
 		@Override
 		public String toString() {
@@ -871,12 +857,10 @@ public class Board {
 			sb.append("Path: ").append(path.stream().map(i -> Algebraic.toAlgebraic(i)).collect(Collectors.joining(","))).append("\n");
 			sb.append("King: ").append(opponentKingIdx == -1 ? "No" : Algebraic.toAlgebraic(path.get(opponentKingIdx))).append("\n");
 			sb.append("Frst piece: ").append(firstPieceIdx == -1 ? "None" : Algebraic.toAlgebraic(path.get(firstPieceIdx)) + (firstPieceIsOurs ? " (ours)" : " (theirs)")).append("\n");
-			sb.append("Own pieces: ").append(ownPiecesIdx.stream().map(i -> Algebraic.toAlgebraic(path.get(i))).collect(Collectors.joining(","))).append("\n");
-			sb.append("Opp pieces: ").append(oppPiecesIdx.stream().map(i -> Algebraic.toAlgebraic(path.get(i))).collect(Collectors.joining(","))).append("\n");
 
 			if (opponentKingIdx != -1) {
-				sb.append("Own pieces before king: ").append(ownPiecesIdx.stream().filter(i -> i < opponentKingIdx).map(i -> Algebraic.toAlgebraic(path.get(i))).collect(Collectors.joining(","))).append("\n");
-				sb.append("Opp pieces before king: ").append(oppPiecesIdx.stream().filter(i -> i < opponentKingIdx).map(i -> Algebraic.toAlgebraic(path.get(i))).collect(Collectors.joining(","))).append("\n");
+				sb.append("Own pieces before king: ").append(ownPiecesBeforeKing.stream().filter(i -> i < opponentKingIdx).map(i -> Algebraic.toAlgebraic(path.get(i))).collect(Collectors.joining(","))).append("\n");
+				sb.append("Opp pieces before king: ").append(oppPiecesBeforeKing.stream().filter(i -> i < opponentKingIdx).map(i -> Algebraic.toAlgebraic(path.get(i))).collect(Collectors.joining(","))).append("\n");
 			}
 			
 			return sb.toString();
@@ -929,12 +913,12 @@ public class Board {
 				//
 				// If there is only one piece between us and the king, that piece is pinned to the squares between us and the king
 				//
-				int ownPiecesBeforeKing = pathData.getOwnPiecesBefore(pathData.opponentKingIdx);
-				int oppPiecesBeforeKing = pathData.getOpponentPiecesBefore(pathData.opponentKingIdx);
+				int ownPiecesBeforeKing = pathData.ownPiecesBeforeKing.size();
+				int oppPiecesBeforeKing = pathData.oppPiecesBeforeKing.size();
 				
 				if (ownPiecesBeforeKing == 0 && oppPiecesBeforeKing == 1) {
 
-					Integer pinnedPieceIdx = pathData.path.get(pathData.oppPiecesIdx.get(0));
+					Integer pinnedPieceIdx = pathData.path.get(pathData.oppPiecesBeforeKing.get(0));
 					List<Integer> pinnedSquares = new ArrayList<>(pathData.path.subList(0, pathData.opponentKingIdx)); // Clone since subList is a view
 					// Add our own position to the pinned squares to let the pinned piece capture us
 					pinnedSquares.add(fromIdx);
@@ -968,8 +952,8 @@ public class Board {
 				if (ownPiecesBeforeKing == 1 && oppPiecesBeforeKing == 1 && 
 					currentState.enPassantTargetIdx != -1 && vector[0] == 0) {
 					
-					int oppPieceIdx = pathData.path.get(pathData.oppPiecesIdx.get(0));
-					int ownPieceIdx = pathData.path.get(pathData.ownPiecesIdx.get(0));
+					int oppPieceIdx = pathData.path.get(pathData.oppPiecesBeforeKing.get(0));
+					int ownPieceIdx = pathData.path.get(pathData.ownPiecesBeforeKing.get(0));
 					
 					if (board[ownPieceIdx].type == PieceType.PAWN && board[oppPieceIdx].type == PieceType.PAWN) {
 						// Ok there are two different colored pawns between us.
@@ -1031,9 +1015,15 @@ public class Board {
 	private PathData getPathData(int[] vector, int rank, int file, Piece piece, boolean oneStepOnly) {
 		PathData pathData = new PathData(piece, vector);
 		
-		for (int i = 1; ; ++i) {
-			int newRank = vector[0] * i + rank;
-			int newFile = vector[1] * i + file;
+		int rankDelta = vector[0];
+		int fileDelta = vector[1];
+	
+		int newRank = rank;
+		int newFile = file;
+	
+		while (true) {
+			newRank += rankDelta;
+			newFile += fileDelta;
 			
 			int newIdx = getArrayIdx(newRank, newFile);
 			if (newIdx == -1) {

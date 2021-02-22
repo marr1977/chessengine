@@ -73,7 +73,9 @@ public class PerftTest {
 		// 7591 ms
 		// 7774 ms
 		
-		// 2295
+		// 2295 ms after re-write
+		
+		// 1823 ms after tweaks
 	}
 	
 	@Test
@@ -81,7 +83,9 @@ public class PerftTest {
 		verifyNumBoardStates(POS_2, 4, 4085603);
 		// 327458 ms
 		
-		// 72756 ms
+		// 72756 ms after re-write
+		
+		// 58557 ms after tweaks
 	}
 	
 	@Test
@@ -108,14 +112,18 @@ public class PerftTest {
 	public void position3_Depth5() {
 		verifyNumBoardStates(POS_3, 5, 674624);
 		// 10652 ms
+		
+		// 4149 ms after tweaks and re-writes
 	}
 	
 	@Test
 	public void position3_Depth6() {
-		verifyNumBoardStates(POS_3, 6, 11030083);
+		verifyNumBoardStates(POS_3, 6, 11_030_083);
 		// 166123 ms
 		
-		// 92073 ms
+		// 92073 ms efter omskrivning
+		
+		// 70240 ms efter lite smågrejor
 	}
 
 	@Test
@@ -163,6 +171,10 @@ public class PerftTest {
 	public void position6_Depth4() {
 		verifyNumBoardStates(POS_6, 4, 3_894_594);
 		//267849 ms
+		
+		//71453 ms
+		
+		//57751 ms
 	}
 
 	private void verifyNumBoardStates(String fen, int depth, int numPos) {
@@ -198,7 +210,7 @@ public class PerftTest {
 	private Board checkBoardStates(String fen, int depth, String... moves) {
 		Board board = new Board(fen);
 		board.setLogging(false);
-		
+
 		for (String move : moves) {
 			Move m = new Move(move);
 			boolean moved = false;
