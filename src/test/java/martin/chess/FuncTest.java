@@ -35,6 +35,17 @@ public class FuncTest {
 	}
 	
 	@Test
+	public void pawnCanCaptureEnPassantPawnThatIsCheckingKing() {
+		
+		Board board = new Board("8/2p5/3p4/1P5r/RK3p2/6k1/4P1P1/8 b - - 3 2");
+		board.move(new Move("c7c5"));
+		
+		// b5c6 should be possible, capturing the black pawn that is now checking the king, en-passant
+		verifyMoves("[b4a5, b4c3, b4a3, b4b3, b4c4, b5c6]", board.getAvailableMoves());
+		
+	}
+	
+	@Test
 	public void cantCaptureEnPassantIfKingWouldBeInCheck1() {
 		Board board = new Board("8/8/8/K7/1R3p1k/8/4P3/8 w - - 0 1");
 		

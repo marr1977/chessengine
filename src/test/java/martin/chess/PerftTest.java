@@ -23,17 +23,38 @@ public class PerftTest {
 	@Test
 	public void bugFinding() {
 		
-//		You have 2735 moves for e2e4 but reference has 2748
-//		You have 3689 moves for g2g4 but reference has 3702
-		checkBoardStates(POS_3, 4);
+//		You have 45580 moves for b4a4 but reference has 45591
+//		You have 69653 moves for b4b1 but reference has 69665
+//		You have 54181 moves for b4e4 but reference has 54192
+//		You have 10774 moves for b4f4 but reference has 10776
+//		You have 59708 moves for b4b3 but reference has 59719
+//		You have 63770 moves for b4c4 but reference has 63781
+//		You have 48486 moves for b4b2 but reference has 48498
+//		You have 59563 moves for b4d4 but reference has 59574
+		//checkBoardStates(POS_3, 5);
 		
-		// You have 329 moves for h4g3 but reference has 328
-		//checkBoardStates(POS_3, 3, "b4f4");
-	
-		// You have 4 moves for f4g4 but reference has 3
-		// checkBoardStates(POS_3, 2, "b4f4", "h4g3");
+//		You have 3493 moves for h4g3 but reference has 3494
+//		You have 3569 moves for h4g4 but reference has 3570
+//		You have 4059 moves for h4g5 but reference has 4060
+//		You have 2898 moves for h5h6 but reference has 2899
+//		You have 3330 moves for h5g5 but reference has 3331
+//		You have 3129 moves for h5h7 but reference has 3130
+//		You have 3036 moves for h5f5 but reference has 3037
+//		You have 3583 moves for h5h8 but reference has 3584
+//		You have 3415 moves for h5e5 but reference has 3416
+//		You have 2664 moves for d6d5 but reference has 2665
+//		You have 2923 moves for h5d5 but reference has 2924
+		//checkBoardStates(POS_3, 4, "b4a4");
 		
-		//checkBoardStates(POS_3, 2, "b4f4", "h4g3", "f4g4");
+		
+		// You have 318 moves for a5b4 but reference has 319
+		// checkBoardStates(POS_3, 3, "b4a4", "h4g3");
+
+		// You have 5 moves for c7c5 but reference has 6
+		//checkBoardStates(POS_3, 2, "b4a4", "h4g3", "a5b4");
+		
+		// b5b6 missing
+		//checkBoardStates(POS_3, 1, "b4a4", "h4g3", "a5b4", "c7c5");
 	}
 	
 	@Test
@@ -59,6 +80,8 @@ public class PerftTest {
 	public void position2_Depth4() {
 		verifyNumBoardStates(POS_2, 4, 4085603);
 		// 327458 ms
+		
+		// 72756 ms
 	}
 	
 	@Test
@@ -78,22 +101,21 @@ public class PerftTest {
 
 	@Test
 	public void position3_Depth4() {
-		// TODO: Wrong number of moves
 		verifyNumBoardStates(POS_3, 4, 43238);
 	}
 	
 	@Test
 	public void position3_Depth5() {
-		// TODO: No king
 		verifyNumBoardStates(POS_3, 5, 674624);
 		// 10652 ms
 	}
 	
 	@Test
 	public void position3_Depth6() {
-		// TODO: No king
 		verifyNumBoardStates(POS_3, 6, 11030083);
-		// 166123
+		// 166123 ms
+		
+		// 92073 ms
 	}
 
 	@Test

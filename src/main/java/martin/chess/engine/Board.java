@@ -552,6 +552,29 @@ public class Board {
 					//System.err.println("Single captured attacked, in check: FALSE");
 					return false;
 				}
+
+				// See if this would in fact capture the attacker en-passant
+				if (currentState.enPassantTargetIdx != -1 && move.idxTo == currentState.enPassantTargetIdx && piece.type == PieceType.PAWN) {
+					int attackerIdx = setOfAttackers.iterator().next();
+					
+					int attackerRank = attackerIdx / 8; 
+					int attackerFile = attackerIdx % 8;
+							
+					Piece attackingPiece = board[attackerIdx];
+					if (attackingPiece.type == PieceType.PAWN) {
+						int enPassantRank = currentState.enPassantTargetIdx / 8;
+						int enPassantFile = currentState.enPassantTargetIdx % 8;
+						
+						// If the en passant capture rank is 2, the pawn must be on rank 3 (white), otherwise on rank 4 (black) 
+						int expectedAttackerRank = enPassantRank == 2 ? 3 : 4;
+								
+						if (attackerFile == enPassantFile &&
+							attackerRank == expectedAttackerRank) {
+							// It would capture
+							return false;
+						}
+					}
+				}
 			}
 			
 			
@@ -915,7 +938,7 @@ public class Board {
 					List<Integer> pinnedSquares = new ArrayList<>(pathData.path.subList(0, pathData.opponentKingIdx)); // Clone since subList is a view
 					// Add our own position to the pinned squares to let the pinned piece capture us
 					pinnedSquares.add(fromIdx);
-					System.out.println(board[pinnedPieceIdx] + " is pinned on squares " + pinnedSquares.stream().map(idx -> Algebraic.toAlgebraic(idx)).collect(Collectors.toList()));
+					//System.out.println(board[pinnedPieceIdx] + " is pinned on squares " + pinnedSquares.stream().map(idx -> Algebraic.toAlgebraic(idx)).collect(Collectors.toList()));
 					
 					currentState.pinnedPieces.computeIfAbsent(pinnedPieceIdx, k -> new ArrayList<>()).add(pinnedSquares);
 				}

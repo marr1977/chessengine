@@ -77,6 +77,8 @@ public class FENNotation {
 				}
 				i++;
 			}
+		} else {
+			i++;
 		}
 		
 		// En passant square
