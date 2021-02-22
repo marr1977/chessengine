@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -20,6 +19,8 @@ import martin.chess.engine.Move;
  * https://www.chessprogramming.org/Perft_Results
  */
 public class PerftTest {
+	
+	private static boolean DISABLE_THREADS = false;
 
 	private static final String POS_2 = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1";
 	private static final String POS_3 = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1";
@@ -130,6 +131,10 @@ public class PerftTest {
 		// 92073 ms efter omskrivning
 		
 		// 70240 ms efter lite smågrejor
+		
+		// 60442 ms
+		
+		// 57907 ms
 	}
 
 	@Test
@@ -155,6 +160,8 @@ public class PerftTest {
 		
 		// 36552
 		// 39075 ms
+		
+		// 26309 ms
 	}
 	
 	@Test
@@ -181,6 +188,8 @@ public class PerftTest {
 		//71453 ms
 		
 		//57751 ms
+		
+		//55096 ms
 	}
 
 	private void verifyNumBoardStates(String fen, int depth, int numPos) {
@@ -196,7 +205,7 @@ public class PerftTest {
 	}
 	
 	private static int getNumberOfPositions(String fen, int depth) throws Exception {
-    	if (depth > 2) {
+    	if (!DISABLE_THREADS && depth > 2) {
     		int numThreads = Runtime.getRuntime().availableProcessors() - 1;
     		ExecutorService executorService = Executors.newFixedThreadPool(numThreads);
     		

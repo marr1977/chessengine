@@ -11,9 +11,15 @@ public class FENNotation {
 
 	private static final int BOARD_SIZE = 8;
 	
-	public static void initialize(Board theBoard, String fenString) {
+	static void initialize(Board theBoard, String fenString) {
 		Piece[] board = theBoard.getBoard();
 		BoardState currentState = theBoard.getCurrentState();
+		
+		for (Piece piece : board) {
+			if (piece != null) {
+				throw new IllegalArgumentException("Board has already been initialized");
+			}
+		}
 		
 		int rank = 7;
 		int file = 0;

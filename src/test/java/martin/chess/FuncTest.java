@@ -13,7 +13,9 @@ import org.junit.Test;
 
 import martin.chess.engine.Algebraic;
 import martin.chess.engine.Board;
+import martin.chess.engine.Color;
 import martin.chess.engine.FENNotation;
+import martin.chess.engine.GameResult;
 import martin.chess.engine.Move;
 
 /**
@@ -129,7 +131,7 @@ public class FuncTest {
 	public void pieceBehindKingNotPinned() {
 		// ver ok in new solution
 		
-		Board board = new Board("8/3q4/8/8/3R4/3K4/3N4/8 w - - 0 1");
+		Board board = new Board("7k/3q4/8/8/3R4/3K4/3N4/8 w - - 0 1");
 		
 		verifyMoves("[d2b3, d2c4, d2f3, d2e4, d2b1, d2f1, d3e4, d3c4, d3e2, d3c2, d3e3, d3c3, d4d5, d4d6, d4d7]", board.getAvailableMoves());
 	}
@@ -151,7 +153,7 @@ public class FuncTest {
 		// ver ok in new solution
 		
 		// Rook on e3, can only move up or down the e-file
-		Board board = new Board("8/4q3/8/8/8/4R3/8/4K3 w - - 0 1");
+		Board board = new Board("k7/4q3/8/8/8/4R3/8/4K3 w - - 0 1");
 		printMovesByOrigin(board);
 		
 		verifyMoves("[e1f2, e1d2, e1e2, e1f1, e1d1, e3e4, e3e5, e3e6, e3e7, e3e2]", board.getAvailableMoves());
@@ -195,7 +197,7 @@ public class FuncTest {
 	@Test
 	public void pinnedPieceKnight() {
 		// ver ok in new solution
-		Board board = new Board("8/4q3/3N4/2K5/8/8/8/8 w - - 0 1");
+		Board board = new Board("8/4q3/3N4/2K5/8/8/8/7k w - - 0 1");
 		
 		verifyMoves("[c5b6, c5d4, c5b4, c5c6, c5c4, c5d5, c5b5]", board.getAvailableMoves());
 	}
@@ -203,7 +205,7 @@ public class FuncTest {
 	@Test
 	public void kingInCheck1() {
 		// ver ok in new solution
-		Board board = new Board("8/1b2q3/3KR3/8/8/8/8/8 w - - 0 1");
+		Board board = new Board("8/1b2q3/3KR3/8/8/8/8/7k w - - 0 1");
 		
 		verifyMoves("[d6e7, d6e5, e6e7]", board.getAvailableMoves());
 	}
@@ -211,7 +213,7 @@ public class FuncTest {
 	@Test
 	public void kingCantCaptureIfItWouldBeInCheck() {
 		// ver ok in new solution
-		Board board = new Board("8/4q3/8/3Kb3/8/8/8/8 w - - 0 1");
+		Board board = new Board("8/4q3/8/3Kb3/8/8/8/7k w - - 0 1");
 		
 		verifyMoves("[d5c6, d5e4, d5c4]", board.getAvailableMoves());
 	}
@@ -220,7 +222,7 @@ public class FuncTest {
 	public void twoPathsToKingCantBlock() {
 		// ver ok in new solution
 		
-		Board board = new Board("8/8/4b3/8/8/1K3q2/8/3R4 w - - 0 1");
+		Board board = new Board("k7/8/4b3/8/8/1K3q2/8/3R4 w - - 0 1");
 		
 		// Both black's queen and bishop have the king in the check, rook can only block one of them. Must move king
 		verifyMoves("[b3a4, b3c2, b3b4, b3b2]", board.getAvailableMoves());
@@ -249,7 +251,7 @@ public class FuncTest {
 	public void kingCanCaptureIfPieceBetween() {
 		// ver ok in new solution
 		
-		Board board = new Board("8/4q3/8/4n3/3Kb3/8/8/8 w - - 0 1");
+		Board board = new Board("7k/4q3/8/4n3/3Kb3/8/8/8 w - - 0 1");
 		
 		verifyMoves("[d4e3, d4c3, d4e4]", board.getAvailableMoves());
 	}
@@ -276,7 +278,7 @@ public class FuncTest {
 	public void kingCantCaptureProtectedPiece() {
 		// ver ok in new solution
 		
-		Board board = new Board("8/2b5/8/8/5q2/4K3/8/8 w - - 0 1");
+		Board board = new Board("k7/2b5/8/8/5q2/4K3/8/8 w - - 0 1");
 		verifyMoves("[e3e2, e3d3]", board.getAvailableMoves());
 	}
 	
@@ -335,7 +337,7 @@ public class FuncTest {
 	public void knightCanBlockCheck() {
 		// ver ok in new solution
 		
-		Board board = new Board("8/4q3/8/2K5/4N3/8/8/8 w - - 0 1");
+		Board board = new Board("7k/4q3/8/2K5/4N3/8/8/8 w - - 0 1");
 		
 		verifyMoves("[e4d6, c5b6, c5d4, c5c6, c5c4, c5d5, c5b5]", board.getAvailableMoves());
 	}
@@ -415,7 +417,7 @@ public class FuncTest {
 	public void castlingMoves() {
 		// ver ok in new solution
 		
-		Board board = new Board("8/r7/8/8/8/8/8/R3K2R w KQ - 0 1");
+		Board board = new Board("7k/r7/8/8/8/8/8/R3K2R w KQ - 0 1");
 		
 		// Should be able to castle queen side (e1c1) and king side (e1g1)
 		verifyMoves("[a1a2, a1a3, a1a4, a1a5, a1a6, a1a7, a1b1, a1c1, a1d1, e1f2, e1d2, e1e2, e1f1, e1d1, e1g1, e1c1, h1h2, h1h3, h1h4, h1h5, h1h6, h1h7, h1h8, h1g1, h1f1]", board.getAvailableMoves());
@@ -441,4 +443,65 @@ public class FuncTest {
 		Assert.assertEquals("3kq3/8/P7/8/8/8/8/7K b - - 0 2", FENNotation.toString(board));
 	}
 
+	
+	@Test
+	public void checkmate() {
+		Board board = new Board("7k/8/b7/1q6/8/8/3P1P2/3RKN2 b - - 0 1");
+		Assert.assertNull(board.getResult());
+		
+		board.move(new Move("b5e2"));
+		
+		Assert.assertEquals(GameResult.CHECKMATE, board.getResult());
+		Assert.assertEquals(Color.BLACK, board.getWinner());
+	}
+	
+	@Test
+	public void drawInsufficientMaterialTwoKings() {
+		Board board = new Board("6Rk/8/8/8/3K4/8/8/8 b - - 0 1");
+		Assert.assertNull(board.getResult());
+		
+		board.move(new Move("h8g8"));
+		
+		Assert.assertEquals(GameResult.DRAW_INSUFFICIENT_MATERIAL, board.getResult());
+	}
+	
+	@Test
+	public void drawInsufficientMaterialOneBishop() {
+		Board board = new Board("6Rk/8/8/8/3K4/8/6B1/8 b - - 0 1");
+		Assert.assertNull(board.getResult());
+		
+		board.move(new Move("h8g8"));
+		
+		Assert.assertEquals(GameResult.DRAW_INSUFFICIENT_MATERIAL, board.getResult());
+	}
+	
+	@Test
+	public void drawInsufficientMaterialOneKnight() {
+		Board board = new Board("6Rk/8/8/8/3K4/8/6N1/8 b - - 0 1");
+		Assert.assertNull(board.getResult());
+		
+		board.move(new Move("h8g8"));
+		
+		Assert.assertEquals(GameResult.DRAW_INSUFFICIENT_MATERIAL, board.getResult());
+	}
+	
+	@Test
+	public void drawInsufficientBishopSameColor() {
+		Board board = new Board("6Rk/8/8/8/b2K4/8/6B1/8 b - - 0 1");
+		Assert.assertNull(board.getResult());
+		
+		board.move(new Move("h8g8"));
+		
+		Assert.assertEquals(GameResult.DRAW_INSUFFICIENT_MATERIAL, board.getResult());
+	}
+	
+	@Test
+	public void noDrawBishopsOnDifferentColors() {
+		Board board = new Board("6Rk/8/8/8/b2K4/6B1/8/8 b - - 0 1");
+		Assert.assertNull(board.getResult());
+		
+		board.move(new Move("h8g8"));
+		
+		Assert.assertNull(board.getResult());
+	}
 }
