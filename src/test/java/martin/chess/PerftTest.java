@@ -23,24 +23,17 @@ public class PerftTest {
 	@Test
 	public void bugFinding() {
 		
-		//checkBoardStates(POS_3, 2); //You have 18 moves for g2g4 but reference has 17
-		//checkBoardStates(POS_3, 1, "g2g4"); // You have move f4g3 but reference doesn't
+//		You have 2735 moves for e2e4 but reference has 2748
+//		You have 3689 moves for g2g4 but reference has 3702
+		checkBoardStates(POS_3, 4);
 		
-//		You have 44664 moves for h1g1 but reference has 44668
-//		You have 43452 moves for c4b3 but reference has 43453
-		//checkBoardStates(POS_5, 4);
+		// You have 329 moves for h4g3 but reference has 328
+		//checkBoardStates(POS_3, 3, "b4f4");
+	
+		// You have 4 moves for f4g4 but reference has 3
+		// checkBoardStates(POS_3, 2, "b4f4", "h4g3");
 		
-		//You have 1350 moves for f8g8 but reference has 1354
-		checkBoardStates(POS_5, 3, "h1g1");
-		
-//		You have 32 moves for a2a4 but reference has 33
-//		You have 31 moves for b2b4 but reference has 32
-//		You have 32 moves for h2h4 but reference has 33
-//		You have 32 moves for g2g4 but reference has 33
-		//checkBoardStates(POS_5, 2, "h1g1", "f8g8");
-		
-		// You are missing the following reference moves: {g7g5=1}
-		//checkBoardStates(POS_5, 1, "h1g1", "f8g8", "a2a4");
+		//checkBoardStates(POS_3, 2, "b4f4", "h4g3", "f4g4");
 	}
 	
 	@Test
@@ -120,12 +113,12 @@ public class PerftTest {
 	
 	@Test
 	public void position5_Depth4() {
-		// TODO: Wrong number of moves
 		verifyNumBoardStates(POS_5, 4, 2_103_487 );
 		// 138629 ms
 		// 143891 ms
 		
 		// 36552
+		// 39075 ms
 	}
 	
 	@Test

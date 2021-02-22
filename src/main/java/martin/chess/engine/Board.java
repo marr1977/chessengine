@@ -510,7 +510,7 @@ public class Board {
 			// Can't move this piece so that the king becomes in check
 			
 			// Check pinning
-			List<List<Integer>> pinData = currentState.pinnedPieces.get(move.idxFrom); //54
+			List<List<Integer>> pinData = currentState.pinnedPieces.get(move.idxFrom); 
 			if (pinData != null) {
 				boolean matchesAllPins = true;
 				for (var list : pinData) {
@@ -612,7 +612,7 @@ public class Board {
 	
 	private void doMove(Move move, boolean realMove) {
 		if (realMove) {
-			logInfo("Performing move " + move + " in state: " + FENNotation.toString(this));
+			logInfo("Performing move " + move + " in state: " + getState());
 		}
 		
 		int oldRank = move.idxFrom / 8;
@@ -628,6 +628,11 @@ public class Board {
 		int takenPieceIdx = -1;
 		
 		if (takenPiece != null) {
+			if (takenPiece.type == PieceType.KING) {
+				String moves = this.history.stream().map(e -> e.move.toString()).collect(Collectors.joining(","));
+				throw new RuntimeException("Can't capture king. Move " + move + " in state " + getState() + ", move history: " + moves);
+			}
+			
 			takenPieceIdx = move.idxTo;
 		} else if (piece.type == PieceType.PAWN && move.idxTo == currentState.enPassantTargetIdx) {
 			// Find the pawn
@@ -716,6 +721,10 @@ public class Board {
 		
 	}
 
+	public String getState() {
+		return FENNotation.toString(this);
+	}
+
 	/**
 	 * Returns true if the color is currently in check
 	 */
@@ -729,145 +738,293 @@ public class Board {
 	 * oneStepOnly = true for knight and king who can only move one multiple of the supplied direction vectors
 	 *               false for queen/bishop/rook who can move one or more multiples of the direction vectors
 	 */
-	private void getMoves(List<Move> moves, List<Move> attackingMoves, int rank, int file, Piece piece, int[][] directions, boolean oneStepOnly) {
-		int fromIdx = getArrayIdx(rank, file);
+	class PathData {
+		List<Integer> path = new ArrayList<>();
+		
+		// Indices into "path"
+		int opponentKingIdx = -1; 
+		List<Integer> ownPiecesIdx = new ArrayList<>();
+		List<Integer> oppPiecesIdx = new ArrayList<>();
+		
+		int firstPieceIdx = -1;
+		boolean firstPieceIsOurs;
 
+		private Piece ourPiece;
+
+		private int[] vector;
+
+		public PathData(Piece ourPiece, int[] vector) {
+			this.ourPiece = ourPiece;
+			this.vector = vector;
+		}
+
+		public void addSquare(int idx, Piece pieceOnSquare) {
+			path.add(idx);
+			
+			if (pieceOnSquare != null) {
+				int pieceIdx = path.size() - 1;
+				
+				if (ourPiece.color == pieceOnSquare.color) {
+					ownPiecesIdx.add(pieceIdx);
+				} else {
+					if (pieceOnSquare.type == PieceType.KING) {
+						opponentKingIdx = pieceIdx;
+					} else {
+						oppPiecesIdx.add(pieceIdx);
+					}
+				}
+				if (firstPieceIdx == -1) {
+					firstPieceIdx = pieceIdx;
+					firstPieceIsOurs = ourPiece.color == pieceOnSquare.color; 
+				}
+			}
+		}
+
+		public boolean isBeforeFirstPiece(int idx) {
+			return firstPieceIdx == -1 || idx < firstPieceIdx;
+		}
+		
+		public boolean isPastFirstPiece(int idx) {
+			return firstPieceIdx != -1 && idx > firstPieceIdx;
+		}
+		
+		public boolean isAtFirstPiece(int idx) {
+			return firstPieceIdx != -1 && idx == firstPieceIdx;
+		}
+		
+		public int getOwnPiecesBefore(int idx) {
+			return getPiecesBefore(ownPiecesIdx, idx);
+		}
+
+		public int getOpponentPiecesBefore(int idx) {
+			return getPiecesBefore(oppPiecesIdx, idx);
+		}
+
+		private int getPiecesBefore(List<Integer> pieceIdxs, int idx) {
+			int count = 0;
+			for (int pieceIdx : pieceIdxs) {
+				if (pieceIdx < idx) {
+					++count;
+				} else {
+					break;
+				}
+			}
+			return count;
+		}
+		
+		@Override
+		public String toString() {
+			String direction = null;
+			if (vector[0] == 0) {
+				// Side ways
+				if (vector[1] == -1) {
+					direction = "LEFT";
+				} else {
+					direction = "RIGHT";
+				}
+			} else if (vector[0] == 1) {
+				// Upwards
+				if (vector[1] == 0) {
+					direction = "UP";
+				} else if (vector[1] == -1) {
+					direction = "UP-LEFT";
+				} else {
+					direction = "UP-RIGHT";
+				}
+			} else {
+				// Downwards
+				if (vector[1] == 0) {
+					direction = "DOWN";
+				} else if (vector[1] == -1) {
+					direction = "DOWN-LEFT";
+				} else {
+					direction = "DOWN-RIGHT";
+				}
+			}
+			
+			StringBuilder sb = new StringBuilder();
+			
+			sb.append(ourPiece.color).append(" ").append(ourPiece.type).append(" ").append(direction).append("\n");
+			sb.append("Path: ").append(path.stream().map(i -> Algebraic.toAlgebraic(i)).collect(Collectors.joining(","))).append("\n");
+			sb.append("King: ").append(opponentKingIdx == -1 ? "No" : Algebraic.toAlgebraic(path.get(opponentKingIdx))).append("\n");
+			sb.append("Frst piece: ").append(firstPieceIdx == -1 ? "None" : Algebraic.toAlgebraic(path.get(firstPieceIdx)) + (firstPieceIsOurs ? " (ours)" : " (theirs)")).append("\n");
+			sb.append("Own pieces: ").append(ownPiecesIdx.stream().map(i -> Algebraic.toAlgebraic(path.get(i))).collect(Collectors.joining(","))).append("\n");
+			sb.append("Opp pieces: ").append(oppPiecesIdx.stream().map(i -> Algebraic.toAlgebraic(path.get(i))).collect(Collectors.joining(","))).append("\n");
+
+			if (opponentKingIdx != -1) {
+				sb.append("Own pieces before king: ").append(ownPiecesIdx.stream().filter(i -> i < opponentKingIdx).map(i -> Algebraic.toAlgebraic(path.get(i))).collect(Collectors.joining(","))).append("\n");
+				sb.append("Opp pieces before king: ").append(oppPiecesIdx.stream().filter(i -> i < opponentKingIdx).map(i -> Algebraic.toAlgebraic(path.get(i))).collect(Collectors.joining(","))).append("\n");
+			}
+			
+			return sb.toString();
+		}
+		
+	}
+	
+	private void getMoves(List<Move> moves, List<Move> inCheckMoves, int rank, int file, Piece piece, int[][] directions, boolean oneStepOnly) {
+		int fromIdx = getArrayIdx(rank, file);
 		ColorData opponentData = currentState.getColorData(piece.color.getOpposite());
 		
 		for (int[] vector : directions) {
 			
-			int i = 1;
+			PathData pathData = getPathData(vector, rank, file, piece, oneStepOnly);
 			
-			boolean blocked = false;
-			boolean hasMetKing = false;
-			List<Integer> encounteredOwnPieces = new ArrayList<>();
-			List<Integer> encounteredOpponentPieces= new ArrayList<>();
-
-			List<Integer> pinnedSquares = new ArrayList<>();
-			Set<Integer> pathsToKing = new HashSet<>();
+			if (pathData.path.isEmpty()) {
+				continue;
+			}
 			
-			pinnedSquares.add(fromIdx);
-			
-			while (true) {
-				int newRank = vector[0] * i + rank;
-				int newFile = vector[1] * i + file;
+			//
+			// Add possible moves and attacking moves.
+			//
+			for (int i = 0; i < pathData.path.size(); ++i) {
+				int toIdx = pathData.path.get(i);
 				
-				int newIdx = getArrayIdx(newRank, newFile);
-				if (newIdx == -1) {
-					break;
+				if (pathData.isBeforeFirstPiece(i)) {
+					moves.add(new Move(fromIdx, toIdx));
+					inCheckMoves.add(new Move(fromIdx, toIdx));
 				}
-				
-				if (!hasMetKing) {
-					pathsToKing.add(newIdx);
-				}
-				
-				Piece pieceAtDest = board[newIdx];
-				if (!blocked) {
-					if (pieceAtDest == null) {
-						moves.add(new Move(fromIdx, newIdx));
-						attackingMoves.add(new Move(fromIdx, newIdx));
+				else if (pathData.isAtFirstPiece(i)) {
+					if (pathData.firstPieceIsOurs) {
+						// If king captures this piece, it would be in check
+						inCheckMoves.add(new Move(fromIdx, toIdx));	
 					} else {
-						blocked = true;
-						
-						if (pieceAtDest.color != piece.color) {
-							// Captures
-							moves.add(new Move(fromIdx, newIdx));
-							
-							if (pieceAtDest.type == PieceType.KING) {
-								opponentData.attackingPathsToMyKing.add(pathsToKing);
-								
-								hasMetKing = true;
-							} else {
-								encounteredOpponentPieces.add(newIdx);
-							}
-						} else {
-							attackingMoves.add(new Move(fromIdx, newIdx));
-							encounteredOwnPieces.add(newIdx);
-							
-							if (currentState.enPassantTargetIdx == -1 || pieceAtDest.type != PieceType.PAWN) {
-								break;
-							}
-						}
-					} 
-					
-					pinnedSquares.add(newIdx);
-				} else {
-					if (pieceAtDest != null) {
-						if (hasMetKing) {
-							break;
-						}
-						if (pieceAtDest.color == piece.color) {
-							encounteredOwnPieces.add(newIdx);
-							if (currentState.enPassantTargetIdx == -1 || pieceAtDest.type != PieceType.PAWN) {
-								break;
-							}
-						} 
-						else {
-							if (pieceAtDest.type == PieceType.KING) {
-								hasMetKing = true; 
-							} else {
-								encounteredOpponentPieces.add(newIdx);
-							}
-						}
-					} else if (!hasMetKing) {
-						pinnedSquares.add(newIdx);
+						// We can capture this piece
+						moves.add(new Move(fromIdx, toIdx));
 					}
-				}
-				
-				if (hasMetKing && encounteredOpponentPieces.size() == 0) {
-					attackingMoves.add(new Move(fromIdx, newIdx));
-				}
-				
-				if (oneStepOnly) {
+					
 					break;
 				}
+				else if (pathData.isPastFirstPiece(i)) {
+					break;
+				}
+			}
+			
+			if (pathData.opponentKingIdx != -1) {
 				
-				++i;
-			}
-			
-			if (hasMetKing && encounteredOwnPieces.isEmpty() && encounteredOpponentPieces.size() == 1) {
-				Integer pinnedIdx = encounteredOpponentPieces.get(0);
-				//System.out.println(board[pinnedIdx] + " is pinned on squares " + pinnedSquares.stream().map(idx -> Algebraic.toAlgebraic(idx)).collect(Collectors.toList()));
-				currentState.pinnedPieces.computeIfAbsent(pinnedIdx, k -> new ArrayList<>()).add(pinnedSquares);
-			}
-			
-			if (hasMetKing && vector[0] == 0 && currentState.enPassantTargetIdx != -1 && encounteredOwnPieces.size() == 1 && encounteredOpponentPieces.size() == 1) {
-				int ownIdx = encounteredOwnPieces.get(0);
-				int oppIdx = encounteredOpponentPieces.get(0);
-				if (board[ownIdx].type == PieceType.PAWN && board[oppIdx].type == PieceType.PAWN) {
-					// If our pawn is the one causing en-passant, pin the opposing pawn from capturing
-					int enPassantPawnRank = currentState.enPassantTargetIdx / 8;
-					int enPassantPawnFile = currentState.enPassantTargetIdx % 8;
+				//
+				// Add pinned pieces
+				//
+				// If there is only one piece between us and the king, that piece is pinned to the squares between us and the king
+				//
+				int ownPiecesBeforeKing = pathData.getOwnPiecesBefore(pathData.opponentKingIdx);
+				int oppPiecesBeforeKing = pathData.getOpponentPiecesBefore(pathData.opponentKingIdx);
+				
+				if (ownPiecesBeforeKing == 0 && oppPiecesBeforeKing == 1) {
+
+					Integer pinnedPieceIdx = pathData.path.get(pathData.oppPiecesIdx.get(0));
+					List<Integer> pinnedSquares = new ArrayList<>(pathData.path.subList(0, pathData.opponentKingIdx)); // Clone since subList is a view
+					// Add our own position to the pinned squares to let the pinned piece capture us
+					pinnedSquares.add(fromIdx);
+					System.out.println(board[pinnedPieceIdx] + " is pinned on squares " + pinnedSquares.stream().map(idx -> Algebraic.toAlgebraic(idx)).collect(Collectors.toList()));
 					
-					int opponentFile = oppIdx % 8;
-					
-					// enPassantTargetIdx represents the capturing square, but the pawn is one rank more advanced
-					int expectedOurPawnRank = board[ownIdx].color == Color.WHITE ? 2 : 5;
-					if (expectedOurPawnRank == enPassantPawnRank && ((enPassantPawnFile - 1) == opponentFile || (enPassantPawnFile + 1) == opponentFile)) {
-						// "Pin" the opposing pawn to forward or capture the other way
-						int opposingRankDelta = board[oppIdx].color == Color.WHITE ? 1 : -1;
-						int opposingRank = oppIdx / 8;
-						int opposingFile = oppIdx % 8;
-						
-						int fwdIdx = getArrayIdx(opposingRank + opposingRankDelta, opposingFile);
-						int leftCaptureIdx = getArrayIdx(opposingRank + opposingRankDelta, opposingFile + 1);
-						int rightCaptureIdx = getArrayIdx(opposingRank + opposingRankDelta, opposingFile - 1);
-						
-						List<Integer> pinnedPawnSquares = new ArrayList<>();
-						pinnedPawnSquares.add(fwdIdx);
-						if (leftCaptureIdx != currentState.enPassantTargetIdx) {
-							pinnedPawnSquares.add(leftCaptureIdx);
-						}
-						if (rightCaptureIdx != currentState.enPassantTargetIdx) {
-							pinnedPawnSquares.add(rightCaptureIdx);
-						}
-						currentState.pinnedPieces.computeIfAbsent(oppIdx, k -> new ArrayList<>()).add(pinnedPawnSquares);
-					}
+					currentState.pinnedPieces.computeIfAbsent(pinnedPieceIdx, k -> new ArrayList<>()).add(pinnedSquares);
 				}
 				
+				//
+				// If there is nothing between us and the king, add attacking squares behind the king.
+				// This is to prevent the king from moving away from us but still in the line of sight 
+				//
+				if (ownPiecesBeforeKing == 0 && oppPiecesBeforeKing == 0) {
+					for (int idx = pathData.opponentKingIdx; idx < pathData.path.size(); idx++) {
+						inCheckMoves.add(new Move(fromIdx, pathData.path.get(idx)));
+					}
+					
+					// Also add a path to king (to enable pieces to place themselves in this path, thereby preventing check)
+					Set<Integer> pathToKing = new HashSet<>(pathData.path.subList(0, pathData.opponentKingIdx));
+					opponentData.attackingPathsToMyKing.add(pathToKing);
+				}
+				
+				//
+				// This is a very special case for en-passant captures
+				//
+				// If we are attacking the king horizontally, and there is only two pawns of different colors between us and the king,
+				// and if the opposing colored pawn can capture our pawn en passant, the en passant capture is illegal since it
+				// would leave NO pieces between us and the king
+				// 
+				//
+				if (ownPiecesBeforeKing == 1 && oppPiecesBeforeKing == 1 && 
+					currentState.enPassantTargetIdx != -1 && vector[0] == 0) {
+					
+					int oppPieceIdx = pathData.path.get(pathData.oppPiecesIdx.get(0));
+					int ownPieceIdx = pathData.path.get(pathData.ownPiecesIdx.get(0));
+					
+					if (board[ownPieceIdx].type == PieceType.PAWN && board[oppPieceIdx].type == PieceType.PAWN) {
+						// Ok there are two different colored pawns between us.
+						
+						// Now if
+						//
+						// 1) Our pawn is the one who can be captured en-passant AND
+						// 2) The other pawn can capture en passant
+						//
+						// Then we pin the other pawn to squares other than the en-passant capture square
+						
+						int enPassantPawnRank = currentState.enPassantTargetIdx / 8;
+						int enPassantPawnFile = currentState.enPassantTargetIdx % 8;
+						
+						int oppPawnFile = oppPieceIdx % 8;
+						
+						int ownPawnRank = ownPieceIdx / 8;
+						int ownPawnFile = ownPieceIdx % 8;
+
+						int enpassantPawnRankForOurColor = board[ownPieceIdx].color == Color.WHITE ? 3 : 4;
+						int enpassantCaptureRankForOurColor = board[ownPieceIdx].color == Color.WHITE ? 2 : 5;
+						
+						if (enpassantPawnRankForOurColor == ownPawnRank && 
+							enpassantCaptureRankForOurColor == enPassantPawnRank &&
+							enPassantPawnFile == ownPawnFile) {
+							
+							// Yes, our pawn caused the en passant
+							
+							// Can the other pawn capture our pawn?
+							if ((oppPawnFile + 1) == ownPawnFile || (oppPawnFile - 1) == ownPawnFile) {
+								// Yes. Pin the opposing pawn
+								int opposingColorRankDelta = board[oppPieceIdx].color == Color.WHITE ? 1 : -1;
+
+								int fwdIdx = getArrayIdx(ownPawnRank + opposingColorRankDelta, oppPawnFile);
+								int leftCaptureIdx = getArrayIdx(ownPawnRank + opposingColorRankDelta, oppPawnFile + 1);
+								int rightCaptureIdx = getArrayIdx(ownPawnRank + opposingColorRankDelta, oppPawnFile - 1);
+								
+								List<Integer> pinnedPawnSquares = new ArrayList<>();
+								pinnedPawnSquares.add(fwdIdx);
+								if (leftCaptureIdx != currentState.enPassantTargetIdx) {
+									pinnedPawnSquares.add(leftCaptureIdx);
+								}
+								if (rightCaptureIdx != currentState.enPassantTargetIdx) {
+									pinnedPawnSquares.add(rightCaptureIdx);
+								}
+								currentState.pinnedPieces.computeIfAbsent(oppPieceIdx, k -> new ArrayList<>()).add(pinnedPawnSquares);
+							}
+						}
+						
+					}
+				}
+					
+			}
+			
+		}
+		
+	}	
+	
+	private PathData getPathData(int[] vector, int rank, int file, Piece piece, boolean oneStepOnly) {
+		PathData pathData = new PathData(piece, vector);
+		
+		for (int i = 1; ; ++i) {
+			int newRank = vector[0] * i + rank;
+			int newFile = vector[1] * i + file;
+			
+			int newIdx = getArrayIdx(newRank, newFile);
+			if (newIdx == -1) {
+				break;
+			}
+			
+			pathData.addSquare(newIdx, board[newIdx]);
+			
+			if (oneStepOnly) {
+				break;
 			}
 		}
 		
+		return pathData;
 	}
 
 	@Override
