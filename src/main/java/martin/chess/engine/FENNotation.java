@@ -108,6 +108,10 @@ public class FENNotation {
 	}
 	
 	public static String toString(Board board) {
+		return toString(board, true);
+	}
+	
+	public static String toString(Board board, boolean includeMoveCounters) {
 		Piece[] pieces = board.getBoard();
 		BoardState state = board.getCurrentState();
 		
@@ -160,13 +164,15 @@ public class FENNotation {
 		}
 		sb.append(castlingString.length() > 0 ? castlingString.toString() : "-").append(" ");
 		
-		
 		if (state.enPassantTargetIdx != -1) {
 			sb.append(Algebraic.toAlgebraic(state.enPassantTargetIdx));	
 		} else {
 			sb.append("-");
 		}
-		sb.append(" ").append(state.halfMoveClock).append(" ").append(state.moveNumber);
+		
+		if (includeMoveCounters) {
+			sb.append(" ").append(state.halfMoveClock).append(" ").append(state.moveNumber);
+		}
 		
 		return sb.toString();
 	}

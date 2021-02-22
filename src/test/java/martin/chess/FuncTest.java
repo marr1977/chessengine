@@ -504,4 +504,38 @@ public class FuncTest {
 		
 		Assert.assertNull(board.getResult());
 	}
+	
+	@Test
+	public void threefoldRepetition() {
+		Board board = new Board("6R1/8/k7/8/b2K4/6B1/8/8 b - - 0 1");
+		Assert.assertNull(board.getResult());
+		
+		board.move(new Move("a6a7"));
+		board.move(new Move("d4d5"));
+		
+		Assert.assertNull(board.getResult());
+		
+		board.move(new Move("a7a6"));
+		board.move(new Move("d5d4"));
+		
+		// Now we are back to original state, state has occured two times
+		
+		Assert.assertNull(board.getResult());
+		
+		board.move(new Move("a6a7"));
+		board.move(new Move("d4d5"));
+		
+		Assert.assertNull(board.getResult());
+		
+		board.move(new Move("a7a6"));
+		
+		Assert.assertNull(board.getResult());
+		
+		board.move(new Move("d5d4"));
+		
+		// Now we are back to original state, state has occured three times
+		
+		Assert.assertEquals(GameResult.DRAW_THREEFOLD_REPETITION, board.getResult());
+
+	}
 }

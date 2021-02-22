@@ -54,7 +54,9 @@ public class Board {
 		new int[] {0, -1}
 	};
 	
-
+	/**
+	 * Represents a player's castling ability
+	 */
 	static class CastlingAbility {
 		public CastlingAbility() {
 		}
@@ -68,6 +70,9 @@ public class Board {
 		boolean canCastleQueenSide;
 	}
 
+	/**
+	 * Represents the board state. Used for supporting undo of moves 
+	 */
 	static class BoardState {
 		public BoardState() {
 			 blackData = new ColorData();
@@ -97,6 +102,9 @@ public class Board {
 		}
 	}
 	
+	/**
+	 * Represents data specific for each side
+	 */
 	static class ColorData {
 		boolean inCheck;
 		int kingIdx;
@@ -128,7 +136,10 @@ public class Board {
 		}
 	}
 	
-	static class BoardHistoryEntry {
+	/**
+	 * Stored in the history log 
+	 */
+	private static class BoardHistoryEntry {
 		BoardState state;
 		Move move;
 		Piece takenPiece;
@@ -147,6 +158,8 @@ public class Board {
 	private boolean logging = true;
 	private boolean validateMoves = true;
 	
+	private Map<String, Integer> repetitionData = new HashMap<>();
+	
 	public Board() {
 		this("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 	}
@@ -157,6 +170,8 @@ public class Board {
 		
 		currentState.blackData.kingIdx = findKingIdx(Color.BLACK);
 		currentState.whiteData.kingIdx = findKingIdx(Color.WHITE);
+		
+		addRepetitionData();
 		
 		updateAvailableMoves();
 	}
@@ -181,28 +196,14 @@ public class Board {
 		return currentState.moveNumber;
 	}
 	
-	private void updateAvailableMoves() {
-		availableMoves = getAvailableMovesInt();
-		
-		if (availableMoves.size() == 0) {
-			if (isInCheck(currentState.colorToMove)) {
-				result = GameResult.CHECKMATE;
-				winner = currentState.colorToMove == Color.WHITE ? Color.BLACK : Color.WHITE;
-			} else {
-				result = GameResult.STALEMATE;
-			}
-		}
-		
-		if (isInsufficientMaterial()) {
-			result = GameResult.DRAW_INSUFFICIENT_MATERIAL;
-		}
-	}
-	
-	// Combinations with insufficient material to checkmate include:
-	// king versus king
-	// king and bishop versus king
-	// king and knight versus king
-	// king and bishop versus king and bishop with the bishops on the same color.
+	/**
+	 * 
+	 * Combinations with insufficient material to checkmate include:
+	 *   king versus king
+	 *   king and bishop versus king
+	 *   king and knight versus king
+  	 *   king and bishop versus king and bishop with the bishops on the same color.
+  	 */   
 	private boolean isInsufficientMaterial() {
 		List<Piece> nonKingPieces = new ArrayList<>(32);
 		for (Piece piece : board) {
@@ -325,7 +326,7 @@ public class Board {
 			Iterator<Move> moveIterator = moves.iterator();
 			while (moveIterator.hasNext()) {
 				Move move = moveIterator.next();
-				if (wouldBeInCheck(color, move)) {
+				if (wouldBeInCheck(move)) {
 					moveIterator.remove();
 				}
 			}
@@ -366,8 +367,8 @@ public class Board {
 			int kingFileToCastle = 4;
 			
 			if (kingRankToCastle == rank && kingFileToCastle == file) {
-				getCastlingMove(moves, piece, rank, file, ca, true);
-				getCastlingMove(moves, piece, rank, file, ca, false);
+				addCastlingMove(moves, piece, rank, file, ca, true);
+				addCastlingMove(moves, piece, rank, file, ca, false);
 			}
 			
 			break;
@@ -449,7 +450,10 @@ public class Board {
 		}
 	}
 
-	private void getCastlingMove(List<Move> moves, Piece piece, int rank, int file, CastlingAbility ca, boolean castleKingSide) {
+	/**
+	 * Adds a castling move, if possible and allowed
+	 */
+	private void addCastlingMove(List<Move> moves, Piece piece, int rank, int file, CastlingAbility ca, boolean castleKingSide) {
 		if (castleKingSide && !ca.canCastleKingSide) {
 			return;
 		}
@@ -485,7 +489,7 @@ public class Board {
 			}
 			
 			// The king moves two squares, it can't be in check in any of them
-			if (stepsTaken <= 2 && wouldBeInCheck(piece.color, new Move(fromIdx, newIdx))) {
+			if (stepsTaken <= 2 && wouldBeInCheck(new Move(fromIdx, newIdx))) {
 				// Would be in check
 				return;
 			}
@@ -501,7 +505,10 @@ public class Board {
 		moves.add(move);
 	}
 
-	private boolean wouldBeInCheck(Color color, Move move) {
+	/**
+	 * Returns true if playing the given move would put the player making that move in check 
+	 */
+	private boolean wouldBeInCheck(Move move) {
 		
 		Piece piece = board[move.idxFrom];
 
@@ -612,6 +619,8 @@ public class Board {
 	}
 
 	public void undoLastMove() {
+		removeRepetitionData();
+		
 		BoardHistoryEntry historyEntry = history.remove(history.size() - 1);
 		
 		this.currentState = historyEntry.state;
@@ -636,15 +645,52 @@ public class Board {
 	}
 
 	public void move(Move move) {
+		if (result != null) {
+			throw new IllegalArgumentException("Game has ended");
+		}
+		
 		if (validateMoves && !availableMoves.contains(move)) {
 			throw new IllegalArgumentException("Move is illegal");
 		}
 		
 		doMove(move);
 		
+		// Update available moves for the next player
 		updateAvailableMoves();
 	}
 	
+	private void updateAvailableMoves() {
+		availableMoves = getAvailableMovesInt();
+		
+		// Check for end of game situations
+		
+		if (availableMoves.size() == 0) {
+			if (isInCheck(currentState.colorToMove)) {
+				result = GameResult.CHECKMATE;
+				winner = currentState.colorToMove == Color.WHITE ? Color.BLACK : Color.WHITE;
+			} else {
+				result = GameResult.STALEMATE;
+			}
+		}
+		
+		if (isInsufficientMaterial()) {
+			result = GameResult.DRAW_INSUFFICIENT_MATERIAL;
+		}
+		
+		// Automatic draw for three repetitions, normally you should ask the player
+		if (isRepetition(3)) {
+			result = GameResult.DRAW_THREEFOLD_REPETITION;
+		}
+
+		// Automatic draw for 50-move rule, normally you should ask the player
+		if (currentState.halfMoveClock >= 100) {
+			result = GameResult.DRAW_FIFTY_MOVE_RULE;
+		}
+	}
+	
+	/**
+	 * Performs the supplied move 
+	 */
 	private void doMove(Move move) {
 		if (logging) {
 			logInfo("Performing move " + move + " in state: " + getState());
@@ -757,6 +803,24 @@ public class Board {
 			currentState.moveNumber++;
 		}
 		
+		addRepetitionData();
+	}
+
+	private void addRepetitionData() {
+		repetitionData.compute(getRepetitionState(), (k, v) -> v == null ? 1 : v + 1);
+	}
+	
+	private void removeRepetitionData() {
+		repetitionData.compute(getRepetitionState(), (k, v) -> v == null ? 0 : v - 1);
+	}
+	
+	private boolean isRepetition(int threshold) {
+		Integer repetitions = repetitionData.get(getRepetitionState());
+		return repetitions != null && repetitions.intValue() >= 3;
+	}
+	
+	private String getRepetitionState() {
+		return FENNotation.toString(this, false);
 	}
 
 	public String getState() {
