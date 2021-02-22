@@ -1,5 +1,7 @@
 package martin.chess;
 
+import java.util.Objects;
+
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -19,12 +21,26 @@ public class PerftTest {
 	private static final String POS_6 = "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10";
 	
 	@Test
-	@Ignore
 	public void bugFinding() {
-		//checkBoardStates(POS_2, 3, "e5c4"); // You have 1758 moves for c7c5 but reference has 1759
-		//checkBoardStates(POS_2, 2, "e5c4", "c7c5"); // You have 40 moves for d5c6 but reference has 41. State after moves: r3k2r/p2pqpb1/bn2pnp1/2pP4/1pN1P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq c6 0 2
 		
-		checkBoardStates(POS_2, 2, "e5c4", "c7c5"); // 40 moves for d5c6 but stockfish says 41
+		//checkBoardStates(POS_3, 2); //You have 18 moves for g2g4 but reference has 17
+		//checkBoardStates(POS_3, 1, "g2g4"); // You have move f4g3 but reference doesn't
+		
+//		You have 44664 moves for h1g1 but reference has 44668
+//		You have 43452 moves for c4b3 but reference has 43453
+		//checkBoardStates(POS_5, 4);
+		
+		//You have 1350 moves for f8g8 but reference has 1354
+		checkBoardStates(POS_5, 3, "h1g1");
+		
+//		You have 32 moves for a2a4 but reference has 33
+//		You have 31 moves for b2b4 but reference has 32
+//		You have 32 moves for h2h4 but reference has 33
+//		You have 32 moves for g2g4 but reference has 33
+		//checkBoardStates(POS_5, 2, "h1g1", "f8g8");
+		
+		// You are missing the following reference moves: {g7g5=1}
+		//checkBoardStates(POS_5, 1, "h1g1", "f8g8", "a2a4");
 	}
 	
 	@Test
@@ -42,6 +58,8 @@ public class PerftTest {
 		verifyNumBoardStates(POS_2, 3, 97862);
 		// 7591 ms
 		// 7774 ms
+		
+		// 2295
 	}
 	
 	@Test
@@ -67,17 +85,20 @@ public class PerftTest {
 
 	@Test
 	public void position3_Depth4() {
+		// TODO: Wrong number of moves
 		verifyNumBoardStates(POS_3, 4, 43238);
 	}
 	
 	@Test
 	public void position3_Depth5() {
+		// TODO: No king
 		verifyNumBoardStates(POS_3, 5, 674624);
 		// 10652 ms
 	}
 	
 	@Test
 	public void position3_Depth6() {
+		// TODO: No king
 		verifyNumBoardStates(POS_3, 6, 11030083);
 		// 166123
 	}
@@ -99,9 +120,12 @@ public class PerftTest {
 	
 	@Test
 	public void position5_Depth4() {
+		// TODO: Wrong number of moves
 		verifyNumBoardStates(POS_5, 4, 2_103_487 );
 		// 138629 ms
 		// 143891 ms
+		
+		// 36552
 	}
 	
 	@Test
@@ -164,7 +188,8 @@ public class PerftTest {
 			Move m = new Move(move);
 			boolean moved = false;
 			for (var availM : board.getAvailableMoves()) {
-				if (availM.getIdxFrom() == m.getIdxFrom() && availM.getIdxTo() == m.getIdxTo()) {
+				if (availM.getIdxFrom() == m.getIdxFrom() && availM.getIdxTo() == m.getIdxTo() &&
+					Objects.equals(availM.getQueeningPiece(), m.getQueeningPiece())) {
 					board.move(availM);
 					moved = true;
 					break;

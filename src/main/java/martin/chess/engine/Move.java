@@ -1,5 +1,7 @@
 package martin.chess.engine;
 
+import java.util.Objects;
+
 public class Move {
 	int idxFrom;
 	int idxTo;
@@ -18,6 +20,10 @@ public class Move {
 	public Move(int idxFrom, int idxTo, PieceType queeningPiece) {
 		this(idxFrom, idxTo);
 		this.queeningPiece = queeningPiece;
+	}
+	
+	public PieceType getQueeningPiece() {
+		return queeningPiece;
 	}
 	
 	public Move(String string) {
@@ -43,7 +49,8 @@ public class Move {
 		Move other = (Move) obj;
 		return 
 				other.idxFrom == idxFrom && other.idxTo == idxTo && 
-				other.additionalIdxFrom == additionalIdxFrom && other.additionalIdxTo == additionalIdxTo;
+				other.additionalIdxFrom == additionalIdxFrom && other.additionalIdxTo == additionalIdxTo &&
+				Objects.equals(this.queeningPiece, other.queeningPiece);
 	}
 	
 	@Override

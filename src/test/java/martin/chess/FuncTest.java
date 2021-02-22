@@ -1,8 +1,14 @@
 package martin.chess;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.junit.Assert;
 import org.junit.Test;
 
+import martin.chess.engine.Algebraic;
 import martin.chess.engine.Board;
 import martin.chess.engine.FENNotation;
 import martin.chess.engine.Move;
@@ -12,7 +18,110 @@ import martin.chess.engine.Move;
  */
 public class FuncTest {
 
+	@Test
+	public void cantBlockBehindKing() {
+		Board board = new Board("6k1/8/8/q7/8/8/2PK4/2Q5 w - - 0 1");
 		
+		Assert.assertEquals("[c2c3, d2e3, d2d3, d2d1, d2e2]", board.getAvailableMoves().toString());
+	}
+	
+	
+	@Test
+	public void cantCaptureEnPassantIfKingWouldBeInCheck1() {
+		Board board = new Board("8/8/8/K7/1R3p1k/8/4P3/8 w - - 0 1");
+		
+		board.move(new Move("e2e4"));
+		
+		// f4f3 should not be possible since it would remove pawn on e4, thereby exposing king to check from rook on b4
+		Assert.assertEquals("[f4f3, h4g5, h4g3, h4h5, h4h3, h4g4]", board.getAvailableMoves().toString());
+	}
+	
+	@Test
+	public void irrelevantEnPassantDoesNotStopPawnAdvance1() {
+		Board board = new Board("4k3/4p3/8/8/8/8/1P2P3/2K1R3 w - - 0 1");
+		board.move(new Move("b2b4"));
+
+		// Bug was: missing e7e5
+		Assert.assertEquals("[e7e6, e7e5, e8f7, e8d7, e8f8, e8d8]", board.getAvailableMoves().toString());
+	}
+	
+	@Test
+	public void irrelevantEnPassantDoesNotStopPawnAdvance2() {
+		Board board = new Board("4k3/4p3/8/8/8/8/3PP3/2K1R3 w - - 0 1");
+		board.move(new Move("d2d4"));
+
+		printMovesByOrigin(board);
+		
+		// Bug was: missing e7e5
+		Assert.assertEquals("[e7e6, e7e5, e8f7, e8d7, e8f8, e8d8]", board.getAvailableMoves().toString());
+	}
+	
+	@Test
+	public void enPassantCapturePossibleIfOnePieceStillBlocksKing() {
+		Board board = new Board("8/8/8/8/R2pp2k/8/2P1P3/2K5 w - - 0 1");
+		board.move(new Move("c2c4"));
+
+		printMovesByOrigin(board);
+		
+		Assert.assertEquals("[d4c3, d4d3, e4e3, h4g5, h4g3, h4h5, h4h3, h4g4]", board.getAvailableMoves().toString());
+	}
+	
+	@Test
+	public void cantCaptureEnPassantIfKingWouldBeInCheck3() {
+		Board board = new Board("8/8/8/K7/1R3p1k/8/4P1P1/8 w - - 0 1");
+		
+		board.move(new Move("g2g4"));
+		printMovesByOrigin(board);
+		
+		// f4g3 should not be possible since it would remove pawn on g4, thereby exposing king to check from rook on b4
+		Assert.assertEquals("[f4f3, h4g5, h4g3, h4h3, h4g4]", board.getAvailableMoves().toString());
+	}
+	
+	@Test
+	public void cantCaptureEnPassantIfKingWouldBeInCheck2() {
+		Board board = new Board("8/8/5k2/K7/5p2/8/4PR2/8 w - - 0 1");
+		board.move(new Move("e2e4"));
+		
+		// f4f3 is not valid
+		Assert.assertEquals("[f4f3, f6g7, f6e7, f6g5, f6e5, f6f7, f6g6, f6e6]", board.getAvailableMoves().toString());
+	}
+	
+	
+	@Test
+	public void cantCaptureEnPassantIfKingIsInCheck() {
+		Board board = new Board("8/2p5/3p4/KP5r/5p2/8/2R1P2k/8 w - - 0 1");
+		board.move(new Move("e2e4"));
+		
+		// Black king is now in check
+		
+		Assert.assertEquals("[h2g3, h2g1, h2h3, h2h1]", board.getAvailableMoves().toString());
+	}
+	
+	@Test
+	public void pawnCantCaptureIfKingWouldBeInCheck() {
+		Board board = new Board("k7/8/8/2q5/3p4/2P5/2K5/8 w - - 0 1");
+		
+		Assert.assertEquals("[c2d3, c2b3, c2d1, c2b1, c2c1, c2d2, c2b2, c3c4]", board.getAvailableMoves().toString());
+	}
+	
+	@Test
+	public void pieceBehindKingNotPinned() {
+		Board board = new Board("8/3q4/8/8/3R4/3K4/3N4/8 w - - 0 1");
+		
+		printMovesByOrigin(board);
+		Assert.assertEquals("[d2b3, d2c4, d2f3, d2e4, d2b1, d2f1, d3e4, d3c4, d3e2, d3c2, d3e3, d3c3, d4d5, d4d6, d4d7]", board.getAvailableMoves().toString());
+	}
+
+	@Test
+	public void opponentQueenPinnedWhenPawnQueens() {
+		Board board = new Board("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8");
+		board.move(new Move("d7c8q"));
+		
+		Assert.assertEquals(
+			"[f2d3, f2e4, f2h3, f2g4, f2d1, f2h1, c6c5, a7a6, a7a5, b7b6, b7b5, e7f6, e7g5, e7h4, e7d6, e7c5, e7b4, e7a3, f7f6, f7f5, g7g6, g7g5, h7h6, h7h5, b8a6, b8d7, d8e8, d8c8, f8g8, f8e8, h8g8]", 
+			board.getAvailableMoves().toString());
+	}
+	
 	@Test
 	public void pinnedPieceRook() {
 		// Rook on e3, can only move up or down the e-file
@@ -36,8 +145,88 @@ public class FuncTest {
 	}
 	
 	@Test
+	public void kingCantCaptureIfItWouldBeInCheck() {
+		Board board = new Board("8/4q3/8/3Kb3/8/8/8/8 w - - 0 1");
+		
+		Assert.assertEquals("[d5c6, d5e4, d5c4]", board.getAvailableMoves().toString());
+	}
+	
+	@Test
+	public void twoPathsToKingCantBlock() {
+		Board board = new Board("8/8/4b3/8/8/1K3q2/8/3R4 w - - 0 1");
+		
+		// Both black's queen and bishop have the king in the check, rook can only block one of them. Must move king
+		printMovesByOrigin(board);
+		
+		Assert.assertEquals("[b3a4, b3c2, b3b4, b3b2]", board.getAvailableMoves().toString());
+	}
+	
+	@Test
+	public void noPinIfTwoPiecesAreProtectingKing() {
+		Board board = new Board("6k1/8/8/q7/8/R7/N7/K7 w - - 0 1");
+		
+		// Both rook on a3 and knight on a2 are free to move since they are both between the king and the black queen
+		Assert.assertEquals("[a1b2, a1b1, a2c3, a2b4, a2c1, a3a4, a3a5, a3b3, a3c3, a3d3, a3e3, a3f3, a3g3, a3h3]", board.getAvailableMoves().toString());
+		
+		// Rook moves away, pinning the knight
+		board.move(new Move("a3e3"));
+		
+		// Queen moves up one rank
+		board.move(new Move("a5a6"));
+		
+		// Knight on a2 can't move
+		Assert.assertEquals("[a1b2, a1b1, e3e4, e3e5, e3e6, e3e7, e3e8, e3e2, e3e1, e3f3, e3g3, e3h3, e3d3, e3c3, e3b3, e3a3]", board.getAvailableMoves().toString());
+	}
+	
+	@Test
+	public void kingCanCaptureIfPieceBetween() {
+		Board board = new Board("8/4q3/8/4n3/3Kb3/8/8/8 w - - 0 1");
+		
+		Assert.assertEquals("[d4e3, d4c3, d4e4]", board.getAvailableMoves().toString());
+	}
+	
+	
+	@Test
+	public void extendedPinningTest() {
+		Board board = new Board("k7/4q3/4R3/4b3/4K3/8/8/8 w - - 0 1");
+		
+		Assert.assertEquals("[e4f5, e4d5, e4f3, e4d3, e4e5, e4e3, e6e7, e6e5, e6f6, e6g6, e6h6, e6d6, e6c6, e6b6, e6a6]", board.getAvailableMoves().toString());
+		
+		// White moves king down one rank
+		board.move(new Move("e4e3"));
+		
+		// White moves bishop, rook is pinned
+		board.move(new Move("e5c7"));
+		
+		Assert.assertEquals("[e3d4, e3f2, e3d2, e3e4, e3e2, e3f3, e3d3, e6e7, e6e5, e6e4]", board.getAvailableMoves().toString());
+	}
+
+	@Test
+	public void kingCantCaptureProtectedPiece() {
+		Board board = new Board("8/2b5/8/8/5q2/4K3/8/8 w - - 0 1");
+		Assert.assertEquals("[e3e2, e3d3]", board.getAvailableMoves().toString());
+	}
+	
+	private void printMovesByOrigin(Board board) {
+		Map<String, List<String>> byOrigin = new HashMap<>();
+		
+		for (var move : board.getAvailableMoves()) {
+			String from = Algebraic.toAlgebraic(move.getIdxFrom());
+			String to = Algebraic.toAlgebraic(move.getIdxTo());
+			
+			byOrigin.computeIfAbsent(from, k -> new ArrayList<>()).add(to);
+		}
+		
+		for (var e : byOrigin.entrySet()) {
+			System.out.println(e.getKey() + ": " + e.getValue());
+		}
+		
+		System.out.println(board.getAvailableMoves());
+	}
+
+	@Test
 	public void kingInCheck2() {
-		Board board = new Board("8/8/4k3/8/2Q5/6N1/3R4/8 b - - 0 1");
+		Board board = new Board("8/8/4k3/8/2Q5/6N1/3R4/K7 b - - 0 1");
 		
 		Assert.assertEquals("[e6e7, e6e5, e6f6]", board.getAvailableMoves().toString());
 		
@@ -49,6 +238,27 @@ public class FuncTest {
 	}
 	
 	@Test
+	public void kingVsPawn() {
+		Board board = new Board("8/8/2kp4/8/2PK4/8/8/8 w - - 0 1");
+
+		
+		// White can't move to c5 or e5, they are attacked by pawn
+		Assert.assertEquals("[c4c5, d4e3, d4c3, d4d3, d4e4]", board.getAvailableMoves().toString());
+		
+		board.move(new Move("d4e4"));
+		
+		System.out.println(board.getAvailableMoves());
+		System.out.println(board.getAttackedSquares());
+		
+		// Black can't move to d5 or b5, they are attacked by pawn
+		Assert.assertEquals("[c6d7, c6b7, c6c7, c6c5, c6b6, d6d5]", board.getAvailableMoves().toString());
+		
+		board.move(new Move("c6c5"));
+		
+		Assert.assertEquals("[e4f5, e4f3, e4d3, e4e3, e4f4]", board.getAvailableMoves().toString());
+	}
+	
+	@Test
 	public void knightCanBlockCheck() {
 		
 		Board board = new Board("8/4q3/8/2K5/4N3/8/8/8 w - - 0 1");
@@ -57,9 +267,19 @@ public class FuncTest {
 	}
 
 	@Test
+	public void knightCanBlockOneOfTwoChecks() {
+		
+		Board board = new Board("k7/1r6/4q3/8/8/1K2N3/8/8 w - - 0 1");
+		
+		printMovesByOrigin(board);
+		
+		Assert.assertEquals("[b3a4, b3c2, b3c3, b3a3]", board.getAvailableMoves().toString());
+	}
+
+	@Test
 	public void pinBecomesUnpinned() {
 		
-		Board board = new Board("8/8/8/kp4Q1/4P3/2p5/8/8 b - - 0 1");
+		Board board = new Board("8/8/8/kp4Q1/4P3/2p5/8/7K b - - 0 1");
 		
 		// Black pawn on b5 can't move because it would expose king to check
 		Assert.assertEquals("[c3c2, a5b6, a5b4, a5a6, a5a4]", board.getAvailableMoves().toString());
@@ -68,7 +288,7 @@ public class FuncTest {
 		board.move(new Move("c3c2"));
 		
 		// White moves his pawn and blocks the queen
-		Assert.assertEquals("[e4e5, g5h6, g5f6, g5e7, g5d8, g5h4, g5f4, g5e3, g5d2, g5c1, g5g6, g5g7, g5g8, g5g4, g5g3, g5g2, g5g1, g5h5, g5f5, g5e5, g5d5, g5c5, g5b5]", 
+		Assert.assertEquals("[h1g2, h1h2, h1g1, e4e5, g5h6, g5f6, g5e7, g5d8, g5h4, g5f4, g5e3, g5d2, g5c1, g5g6, g5g7, g5g8, g5g4, g5g3, g5g2, g5g1, g5h5, g5f5, g5e5, g5d5, g5c5, g5b5]", 
 				board.getAvailableMoves().toString());
 			
 		board.move(new Move("e4e5"));
@@ -79,7 +299,7 @@ public class FuncTest {
 	
 	@Test
 	public void castlingPossibilityElimatedByCapture() {
-		Board board = new Board("8/8/8/8/8/2P4r/8/4K2R w K - 0 1");
+		Board board = new Board("k7/8/8/8/8/2P4r/8/4K2R w K - 0 1");
 		
 		// White can castle (e1g1) 
 		Assert.assertEquals("[e1f2, e1d2, e1e2, e1f1, e1d1, e1g1, h1h2, h1h3, h1g1, h1f1, c3c4]", board.getAvailableMoves().toString());
@@ -88,12 +308,29 @@ public class FuncTest {
 		board.move(new Move("c3c4"));
 
 		// Black captures the rook
-		Assert.assertEquals("[h3h4, h3h5, h3h6, h3h7, h3h8, h3h2, h3h1, h3g3, h3f3, h3e3, h3d3, h3c3, h3b3, h3a3]", board.getAvailableMoves().toString());
+		Assert.assertEquals("[h3h4, h3h5, h3h6, h3h7, h3h8, h3h2, h3h1, h3g3, h3f3, h3e3, h3d3, h3c3, h3b3, h3a3, a8b7, a8a7, a8b8]", board.getAvailableMoves().toString());
 		
 		board.move(new Move("h3h1"));
 		
 		// Castling is now not possible
 		Assert.assertEquals("[e1f2, e1d2, e1e2]", board.getAvailableMoves().toString());
+	}
+	
+	@Test
+	public void unableToCastleDueToCheckOnKing() {
+		Board board = new Board("k7/8/8/8/8/5p2/P7/4K2R w K - 0 1");
+		
+		// Short castling (e1g1) is available)
+		Assert.assertEquals("[e1f2, e1d2, e1f1, e1d1, e1g1, h1h2, h1h3, h1h4, h1h5, h1h6, h1h7, h1h8, h1g1, h1f1, a2a3, a2a4]", board.getAvailableMoves().toString());
+		
+		// White pushes pawn
+		board.move(new Move("a2a3"));
+		
+		// Black pushes pawn
+		board.move(new Move("f3f2"));
+
+		// e1g1 not available
+		Assert.assertEquals("[e1f2, e1d2, e1e2, e1f1, e1d1]", board.getAvailableMoves().toString());
 	}
 	
 	@Test

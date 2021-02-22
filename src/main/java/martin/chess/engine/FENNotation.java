@@ -66,7 +66,7 @@ public class FENNotation {
 		// Castling availability
 		if (fenString.charAt(i) != '-') {
 			while (fenString.charAt(i) != ' ') {
-				CastlingAbility ca = Character.isUpperCase(fenString.charAt(i)) ? currentState.whiteCastling : currentState.blackCastling;
+				CastlingAbility ca = Character.isUpperCase(fenString.charAt(i)) ? currentState.whiteData.castling : currentState.blackData.castling;
 				c = Character.toUpperCase(fenString.charAt(i));
 				if (c == 'K') {
 					ca.canCastleKingSide = true;
@@ -134,17 +134,20 @@ public class FENNotation {
 		
 		sb.append(" ").append(state.colorToMove == Color.WHITE ? "w" : "b").append(" ");
 		
+		CastlingAbility whiteCA = state.getColorData(Color.WHITE).castling;
+		CastlingAbility blackCA = state.getColorData(Color.BLACK).castling;
+		
 		StringBuilder castlingString = new StringBuilder();
-		if (state.whiteCastling.canCastleKingSide) {
+		if (whiteCA.canCastleKingSide) {
 			castlingString.append(PieceType.KING.getShortName(Color.WHITE));
 		}
-		if (state.whiteCastling.canCastleQueenSide) {
+		if (whiteCA.canCastleQueenSide) {
 			castlingString.append(PieceType.QUEEN.getShortName(Color.WHITE));
 		}
-		if (state.blackCastling.canCastleKingSide) {
+		if (blackCA.canCastleKingSide) {
 			castlingString.append(PieceType.KING.getShortName(Color.BLACK));
 		}
-		if (state.blackCastling.canCastleQueenSide) {
+		if (blackCA.canCastleQueenSide) {
 			castlingString.append(PieceType.QUEEN.getShortName(Color.BLACK));
 		}
 		sb.append(castlingString.length() > 0 ? castlingString.toString() : "-").append(" ");

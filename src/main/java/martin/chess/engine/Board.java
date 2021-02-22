@@ -2,8 +2,12 @@ package martin.chess.engine;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class Board {
@@ -67,8 +71,8 @@ public class Board {
 
 	static class BoardState {
 		public BoardState() {
-			 blackCastling = new CastlingAbility();
-			 whiteCastling = new CastlingAbility();
+			 blackData = new ColorData();
+			 whiteData = new ColorData();
 		}
 		
 		public BoardState(BoardState from) {
@@ -76,16 +80,50 @@ public class Board {
 			this.halfMoveClock = from.halfMoveClock;
 			this.moveNumber = from.moveNumber;
 			this.enPassantTargetIdx = from.enPassantTargetIdx;
-			this.blackCastling = new CastlingAbility(from.blackCastling);
-			this.whiteCastling = new CastlingAbility(from.whiteCastling);
+			
+			this.blackData = new ColorData(from.blackData);
+			this.whiteData = new ColorData(from.whiteData);
 		}
 		
 		Color colorToMove;
 		int enPassantTargetIdx = -1;
-		CastlingAbility blackCastling;
-		CastlingAbility whiteCastling;
+		ColorData blackData;
+		ColorData whiteData;
+		Map<Integer, List<List<Integer>>> pinnedPieces = new HashMap<>();
 		int halfMoveClock;
 		int moveNumber;
+		
+		public ColorData getColorData(Color color) {
+			return color == Color.WHITE ? whiteData : blackData;
+		}
+	}
+	
+	static class ColorData {
+		boolean inCheck;
+		List<Set<Integer>> attackingPathsToMyKing = new ArrayList<>();
+		Map<Integer, Set<Integer>> squaresAttackedByMe = new HashMap<>();
+		CastlingAbility castling;
+		
+		ColorData() {
+			castling = new CastlingAbility();
+		}
+		
+		ColorData(ColorData from) {
+			inCheck = from.inCheck;
+			attackingPathsToMyKing = new ArrayList<>(from.attackingPathsToMyKing);
+			squaresAttackedByMe = new HashMap<>(from.squaresAttackedByMe);
+			castling = new CastlingAbility(from.castling);
+		}
+		
+		void clear() {
+			attackingPathsToMyKing.clear();
+			squaresAttackedByMe.clear();
+			inCheck = false;
+		}
+
+		public String getAttackedSquares() {
+			return squaresAttackedByMe.entrySet().stream().map(i -> Algebraic.toAlgebraic(i.getKey())).collect(Collectors.joining(","));
+		}
 	}
 	
 	static class BoardHistoryEntry {
@@ -219,6 +257,13 @@ public class Board {
 	 * Gets a list of all playable moves in the current state 
 	 */
 	private List<Move> getAvailableMovesInt() {
+		currentState.pinnedPieces.clear();
+		currentState.blackData.clear();
+		currentState.whiteData.clear();
+		
+		// Update squares attacked by the other party
+		getAvailableMoves(currentState.colorToMove == Color.WHITE ? Color.BLACK : Color.WHITE, false);
+		
 		return getAvailableMoves(currentState.colorToMove, true);
 	}
 	
@@ -234,15 +279,39 @@ public class Board {
 	private List<Move> getAvailableMoves(Color color, boolean considerCheck) {
 		
 		List<Move> moves = new ArrayList<>();
+		List<Move> attackingMoves = new ArrayList<>();
 		
 		for (int rank = 0; rank < 8; ++rank) {
 			for (int file = 0; file < 8; ++file) {
 				Piece piece = board[getArrayIdx(rank, file)];
 				if (piece != null && piece.color == color) {
-					moves.addAll(getAvailableMoves(rank, file, piece, considerCheck));
+					List<Move> pieceMoves = getAvailableMoves(rank, file, piece, attackingMoves);
+					moves.addAll(pieceMoves);
 				}
 			}
 		}
+		
+		int opponentKingIdx = -1;
+		for (int idx = 0; idx < board.length; ++idx) {
+			Piece piece = board[idx];
+			if (piece != null && piece.color != color && piece.type == PieceType.KING) {
+				opponentKingIdx = idx;
+				break;
+			}
+		}
+		
+		ColorData myData = currentState.getColorData(color);
+		ColorData opponentData = currentState.getColorData(color.getOpposite());
+				
+		Map<Integer, Set<Integer>> attackedSquares = new HashMap<>();
+		for (var move : attackingMoves) {
+			attackedSquares.computeIfAbsent(move.getIdxTo(), k -> new HashSet<>()).add(move.getIdxFrom());
+			if (attackedSquares.containsKey(opponentKingIdx)) {
+				opponentData.inCheck = true;
+			}
+		}
+		
+		myData.squaresAttackedByMe = attackedSquares;
 		
 		if (considerCheck) {
 			Iterator<Move> moveIterator = moves.iterator();
@@ -254,45 +323,43 @@ public class Board {
 			}
 		}
 		
+		
+		
 		return moves;
 	}
 	
 	/**
 	 * Gets a list of playable moves for the given piece 
 	 */
-	private List<Move> getAvailableMoves(int rank, int file, Piece piece, boolean considerCheck) {
+	private List<Move> getAvailableMoves(int rank, int file, Piece piece, List<Move> attackingMoves) {
 		int fromIdx = getArrayIdx(rank, file);
 		
 		List<Move> moves = new ArrayList<>();
 		
 		switch (piece.type) {
 		case BISHOP:
-			getMoves(moves, rank, file, piece, BISHOP_DIRECTIONS, false);
+			getMoves(moves, attackingMoves, rank, file, piece, BISHOP_DIRECTIONS, false);
 			break;
 		case KNIGHT:
-			getMoves(moves, rank, file, piece, KNIGHT_DIRECTIONS, true);
+			getMoves(moves, attackingMoves, rank, file, piece, KNIGHT_DIRECTIONS, true);
 			break;
 		case QUEEN:
-			getMoves(moves, rank, file, piece, ALL_DIRECTIONS, false);
+			getMoves(moves, attackingMoves, rank, file, piece, ALL_DIRECTIONS, false);
 			break;
 		case ROOK:
-			getMoves(moves, rank, file, piece, ROOK_DIRECTIONS, false);
+			getMoves(moves, attackingMoves, rank, file, piece, ROOK_DIRECTIONS, false);
 			break;
 		case KING:
-			getMoves(moves, rank, file, piece, ALL_DIRECTIONS, true);
+			getMoves(moves, attackingMoves, rank, file, piece, ALL_DIRECTIONS, true);
 			
-			// In the case where considerCheck is false, castling is not applicable for
-			// reasons I'm currently unable to express.
+			CastlingAbility ca = currentState.getColorData(piece.color).castling;
 			
-			if (considerCheck) {
-				CastlingAbility ca = piece.color == Color.WHITE ? currentState.whiteCastling : currentState.blackCastling;
-				int kingRankToCastle = piece.color == Color.WHITE ? 0 : 7;
-				int kingFileToCastle = 4;
-				
-				if (kingRankToCastle == rank && kingFileToCastle == file) {
-					getCastlingMove(moves, piece, rank, file, ca, true);
-					getCastlingMove(moves, piece, rank, file, ca, false);
-				}
+			int kingRankToCastle = piece.color == Color.WHITE ? 0 : 7;
+			int kingFileToCastle = 4;
+			
+			if (kingRankToCastle == rank && kingFileToCastle == file) {
+				getCastlingMove(moves, piece, rank, file, ca, true);
+				getCastlingMove(moves, piece, rank, file, ca, false);
 			}
 			
 			break;
@@ -304,11 +371,13 @@ public class Board {
 					
 			// Capture left?
 			if (takeLeftIdx != -1) {
+				attackingMoves.add(new Move(fromIdx, takeLeftIdx));
 				getPawnCaptureMove(piece, fromIdx, moves, takeLeftIdx);
 			}
 
 			// Capture right?
 			if (takeRightIdx != -1) {
+				attackingMoves.add(new Move(fromIdx, takeRightIdx));
 				getPawnCaptureMove(piece, fromIdx, moves, takeRightIdx);
 			}
 			
@@ -425,11 +494,90 @@ public class Board {
 	}
 
 	private boolean wouldBeInCheck(Color color, Move move) {
-		// Super ugly..
-		doMove(move, false);
-		boolean inCheck = isInCheck(color);
-		undoLastMove();
-		return inCheck;
+		
+		Piece piece = board[move.idxFrom];
+
+		ColorData myData = currentState.getColorData(piece.color);
+		ColorData opponentData = currentState.getColorData(piece.color.getOpposite());
+		
+		var attackedSquares = opponentData.squaresAttackedByMe;
+		var pathsToKing = myData.attackingPathsToMyKing;
+		
+		if (piece.type == PieceType.KING) {
+			// Can't move to an attacked square
+			return attackedSquares.containsKey(move.idxTo);
+		} else {
+			// Can't move this piece so that the king becomes in check
+			
+			// Check pinning
+			List<List<Integer>> pinData = currentState.pinnedPieces.get(move.idxFrom); //54
+			if (pinData != null) {
+				boolean matchesAllPins = true;
+				for (var list : pinData) {
+					if (!list.contains(move.idxTo)) {
+						matchesAllPins = false;
+						break;
+					}
+				}
+				
+				if (!matchesAllPins) {
+					return true;
+				}
+			}
+			
+			// Check if we can block check by moving in the way of the attacker and the king
+			boolean canBlockAllPaths = pathsToKing.size() > 0;
+			for (var path : pathsToKing) {
+				if (!path.contains(move.idxTo)) {
+					canBlockAllPaths = false;
+					break;
+				}
+			}
+
+			// Check the current state of the king
+			int kingIdx = getKingIdx(piece.color);
+			var setOfAttackers = attackedSquares.get(kingIdx);
+			boolean hasAttackers = setOfAttackers != null;
+			
+			if (hasAttackers) {
+			
+				// We are in check with multiple attackers
+				if (setOfAttackers.size() > 1) {
+					//System.err.println("Multiple attackers, in check: TRUE");
+					return true;
+				}
+				
+				// If this move captures the lone attacker, we are not in check
+				if (setOfAttackers.contains(move.idxTo)) {
+					//System.err.println("Single captured attacked, in check: FALSE");
+					return false;
+				}
+			}
+			
+			
+			if (canBlockAllPaths) {
+				//System.err.println("Can block all paths with move to " + Algebraic.toAlgebraic(move.idxTo) + ", in check: FALSE");
+				return false;
+			}
+			
+			// Check en-passant
+			if (!hasAttackers) {
+				//if (piece.type == PieceType.PAWN && move.idxTo == currentState.enPassantTargetIdx)
+			}
+			
+			//System.err.println("Returning default (hasAttackers), in check: " + hasAttackers);
+			return hasAttackers;
+		}
+	}
+
+	private int getKingIdx(Color color) {
+		for (int idx = 0; idx < board.length; ++idx) {
+			Piece kingPiece = board[idx];
+			if (kingPiece != null && kingPiece.color == color && kingPiece.type == PieceType.KING) {
+				return idx;
+			}
+		}
+		throw new RuntimeException("No king!");
 	}
 
 	public void undoLastMove() {
@@ -546,7 +694,7 @@ public class Board {
 		// Update castling ability
 		//
 		if (realMove) {
-			CastlingAbility ca = currentState.colorToMove == Color.WHITE ? currentState.whiteCastling : currentState.blackCastling;
+			CastlingAbility ca = currentState.getColorData(currentState.colorToMove).castling;
 			if (piece.type == PieceType.KING) {
 				ca.canCastleKingSide = false;
 				ca.canCastleQueenSide = false;
@@ -572,18 +720,7 @@ public class Board {
 	 * Returns true if the color is currently in check
 	 */
 	private boolean isInCheck(Color color) {
-		
-		List<Move> moves = getAvailableMoves(color == Color.WHITE ? Color.BLACK : Color.WHITE, false);
-		for (Move move : moves) {
-			if (move.idxTo != -1) {
-				Piece piece = board[move.idxTo];
-				if (piece != null && piece.type == PieceType.KING && piece.color == color) {
-					return true;
-				}
-			}
-		}
-		
-		return false;
+		return currentState.getColorData(color).inCheck; 
 	}
 
 	/**
@@ -592,12 +729,25 @@ public class Board {
 	 * oneStepOnly = true for knight and king who can only move one multiple of the supplied direction vectors
 	 *               false for queen/bishop/rook who can move one or more multiples of the direction vectors
 	 */
-	private void getMoves(List<Move> moves, int rank, int file, Piece piece, int[][] directions, boolean oneStepOnly) {
+	private void getMoves(List<Move> moves, List<Move> attackingMoves, int rank, int file, Piece piece, int[][] directions, boolean oneStepOnly) {
 		int fromIdx = getArrayIdx(rank, file);
+
+		ColorData opponentData = currentState.getColorData(piece.color.getOpposite());
 		
 		for (int[] vector : directions) {
 			
 			int i = 1;
+			
+			boolean blocked = false;
+			boolean hasMetKing = false;
+			List<Integer> encounteredOwnPieces = new ArrayList<>();
+			List<Integer> encounteredOpponentPieces= new ArrayList<>();
+
+			List<Integer> pinnedSquares = new ArrayList<>();
+			Set<Integer> pathsToKing = new HashSet<>();
+			
+			pinnedSquares.add(fromIdx);
+			
 			while (true) {
 				int newRank = vector[0] * i + rank;
 				int newFile = vector[1] * i + file;
@@ -607,24 +757,114 @@ public class Board {
 					break;
 				}
 				
+				if (!hasMetKing) {
+					pathsToKing.add(newIdx);
+				}
+				
 				Piece pieceAtDest = board[newIdx];
-				if (pieceAtDest != null && pieceAtDest.color == piece.color) {
-					break;
+				if (!blocked) {
+					if (pieceAtDest == null) {
+						moves.add(new Move(fromIdx, newIdx));
+						attackingMoves.add(new Move(fromIdx, newIdx));
+					} else {
+						blocked = true;
+						
+						if (pieceAtDest.color != piece.color) {
+							// Captures
+							moves.add(new Move(fromIdx, newIdx));
+							
+							if (pieceAtDest.type == PieceType.KING) {
+								opponentData.attackingPathsToMyKing.add(pathsToKing);
+								
+								hasMetKing = true;
+							} else {
+								encounteredOpponentPieces.add(newIdx);
+							}
+						} else {
+							attackingMoves.add(new Move(fromIdx, newIdx));
+							encounteredOwnPieces.add(newIdx);
+							
+							if (currentState.enPassantTargetIdx == -1 || pieceAtDest.type != PieceType.PAWN) {
+								break;
+							}
+						}
+					} 
+					
+					pinnedSquares.add(newIdx);
+				} else {
+					if (pieceAtDest != null) {
+						if (hasMetKing) {
+							break;
+						}
+						if (pieceAtDest.color == piece.color) {
+							encounteredOwnPieces.add(newIdx);
+							if (currentState.enPassantTargetIdx == -1 || pieceAtDest.type != PieceType.PAWN) {
+								break;
+							}
+						} 
+						else {
+							if (pieceAtDest.type == PieceType.KING) {
+								hasMetKing = true; 
+							} else {
+								encounteredOpponentPieces.add(newIdx);
+							}
+						}
+					} else if (!hasMetKing) {
+						pinnedSquares.add(newIdx);
+					}
 				}
 				
-				// Captures
-				if (pieceAtDest != null && pieceAtDest.color != piece.color) {
-					moves.add(new Move(fromIdx, newIdx));
-					break;
+				if (hasMetKing && encounteredOpponentPieces.size() == 0) {
+					attackingMoves.add(new Move(fromIdx, newIdx));
 				}
-				
-				moves.add(new Move(fromIdx, newIdx));
 				
 				if (oneStepOnly) {
 					break;
 				}
 				
 				++i;
+			}
+			
+			if (hasMetKing && encounteredOwnPieces.isEmpty() && encounteredOpponentPieces.size() == 1) {
+				Integer pinnedIdx = encounteredOpponentPieces.get(0);
+				//System.out.println(board[pinnedIdx] + " is pinned on squares " + pinnedSquares.stream().map(idx -> Algebraic.toAlgebraic(idx)).collect(Collectors.toList()));
+				currentState.pinnedPieces.computeIfAbsent(pinnedIdx, k -> new ArrayList<>()).add(pinnedSquares);
+			}
+			
+			if (hasMetKing && vector[0] == 0 && currentState.enPassantTargetIdx != -1 && encounteredOwnPieces.size() == 1 && encounteredOpponentPieces.size() == 1) {
+				int ownIdx = encounteredOwnPieces.get(0);
+				int oppIdx = encounteredOpponentPieces.get(0);
+				if (board[ownIdx].type == PieceType.PAWN && board[oppIdx].type == PieceType.PAWN) {
+					// If our pawn is the one causing en-passant, pin the opposing pawn from capturing
+					int enPassantPawnRank = currentState.enPassantTargetIdx / 8;
+					int enPassantPawnFile = currentState.enPassantTargetIdx % 8;
+					
+					int opponentFile = oppIdx % 8;
+					
+					// enPassantTargetIdx represents the capturing square, but the pawn is one rank more advanced
+					int expectedOurPawnRank = board[ownIdx].color == Color.WHITE ? 2 : 5;
+					if (expectedOurPawnRank == enPassantPawnRank && ((enPassantPawnFile - 1) == opponentFile || (enPassantPawnFile + 1) == opponentFile)) {
+						// "Pin" the opposing pawn to forward or capture the other way
+						int opposingRankDelta = board[oppIdx].color == Color.WHITE ? 1 : -1;
+						int opposingRank = oppIdx / 8;
+						int opposingFile = oppIdx % 8;
+						
+						int fwdIdx = getArrayIdx(opposingRank + opposingRankDelta, opposingFile);
+						int leftCaptureIdx = getArrayIdx(opposingRank + opposingRankDelta, opposingFile + 1);
+						int rightCaptureIdx = getArrayIdx(opposingRank + opposingRankDelta, opposingFile - 1);
+						
+						List<Integer> pinnedPawnSquares = new ArrayList<>();
+						pinnedPawnSquares.add(fwdIdx);
+						if (leftCaptureIdx != currentState.enPassantTargetIdx) {
+							pinnedPawnSquares.add(leftCaptureIdx);
+						}
+						if (rightCaptureIdx != currentState.enPassantTargetIdx) {
+							pinnedPawnSquares.add(rightCaptureIdx);
+						}
+						currentState.pinnedPieces.computeIfAbsent(oppIdx, k -> new ArrayList<>()).add(pinnedPawnSquares);
+					}
+				}
+				
 			}
 		}
 		
@@ -686,5 +926,9 @@ public class Board {
 
 	public void validateMoves(boolean validateMoves) {
 		this.validateMoves = validateMoves;
+	}
+
+	public String getAttackedSquares() {
+		return "By black: " + currentState.getColorData(Color.BLACK).getAttackedSquares() + "\nBy white: " + currentState.getColorData(Color.WHITE).getAttackedSquares();
 	}
 }
