@@ -22,37 +22,16 @@ public class PerftTest {
 	
 	private static boolean DISABLE_THREADS = false;
 
+	private static final String POS_1 = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 	private static final String POS_2 = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1";
 	private static final String POS_3 = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1";
+	private static final String POS_4 = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1";
+	private static final String POS_4_MIRROR = "r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1 ";
 	private static final String POS_5 = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8";
 	private static final String POS_6 = "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10";
 	
 	@Test
 	public void bugFinding() {
-		
-//		You have 45580 moves for b4a4 but reference has 45591
-//		You have 69653 moves for b4b1 but reference has 69665
-//		You have 54181 moves for b4e4 but reference has 54192
-//		You have 10774 moves for b4f4 but reference has 10776
-//		You have 59708 moves for b4b3 but reference has 59719
-//		You have 63770 moves for b4c4 but reference has 63781
-//		You have 48486 moves for b4b2 but reference has 48498
-//		You have 59563 moves for b4d4 but reference has 59574
-		//checkBoardStates(POS_3, 5);
-		
-//		You have 3493 moves for h4g3 but reference has 3494
-//		You have 3569 moves for h4g4 but reference has 3570
-//		You have 4059 moves for h4g5 but reference has 4060
-//		You have 2898 moves for h5h6 but reference has 2899
-//		You have 3330 moves for h5g5 but reference has 3331
-//		You have 3129 moves for h5h7 but reference has 3130
-//		You have 3036 moves for h5f5 but reference has 3037
-//		You have 3583 moves for h5h8 but reference has 3584
-//		You have 3415 moves for h5e5 but reference has 3416
-//		You have 2664 moves for d6d5 but reference has 2665
-//		You have 2923 moves for h5d5 but reference has 2924
-		//checkBoardStates(POS_3, 4, "b4a4");
-		
 		
 		// You have 318 moves for a5b4 but reference has 319
 		// checkBoardStates(POS_3, 3, "b4a4", "h4g3");
@@ -64,6 +43,31 @@ public class PerftTest {
 		//checkBoardStates(POS_3, 1, "b4a4", "h4g3", "a5b4", "c7c5");
 	}
 	
+	@Test
+	public void position1_Depth1() {
+		verifyNumBoardStates(POS_1, 1, 20);
+	}
+	
+	@Test
+	public void position1_Depth2() {
+		verifyNumBoardStates(POS_1, 2, 400);
+	}
+
+	@Test
+	public void position1_Depth3() {
+		verifyNumBoardStates(POS_1, 3, 8902);
+	}
+
+	@Test
+	public void position1_Depth4() {
+		verifyNumBoardStates(POS_1, 4, 197_281);
+	}
+
+	@Test
+	public void position1_Depth5() {
+		verifyNumBoardStates(POS_1, 5, 4_865_609);
+	}
+
 	@Test
 	public void position2_Depth1() {
 		verifyNumBoardStates(POS_2, 1, 48);
@@ -135,6 +139,58 @@ public class PerftTest {
 		// 60442 ms
 		
 		// 57907 ms
+	}
+	
+	@Test
+	public void position4_Depth1() {
+		verifyNumBoardStates(POS_4, 1, 6);
+	}
+	
+	@Test
+	public void position4_Depth2() {
+		verifyNumBoardStates(POS_4, 2, 264);
+	}
+	
+	@Test
+	public void position4_Depth3() {
+		verifyNumBoardStates(POS_4, 3, 9467);
+	}
+
+	@Test
+	public void position4_Depth4() {
+		verifyNumBoardStates(POS_4, 4, 422_333);
+	}
+
+	@Test
+	public void position4_Depth5() {
+		verifyNumBoardStates(POS_4, 5, 15_833_292);
+		
+		// 87 seconds with threads enabled
+	}
+	
+	@Test
+	public void position4_Mirror_Depth1() {
+		verifyNumBoardStates(POS_4_MIRROR, 1, 6);
+	}
+	
+	@Test
+	public void position4_Mirror_Depth2() {
+		verifyNumBoardStates(POS_4_MIRROR, 2, 264);
+	}
+	
+	@Test
+	public void position4_Mirror_Depth3() {
+		verifyNumBoardStates(POS_4_MIRROR, 3, 9467);
+	}
+
+	@Test
+	public void position4_Mirror_Depth4() {
+		verifyNumBoardStates(POS_4_MIRROR, 4, 422_333);
+	}
+
+	@Test
+	public void position4_Mirror_Depth5() {
+		verifyNumBoardStates(POS_4_MIRROR, 5, 15_833_292);
 	}
 
 	@Test
