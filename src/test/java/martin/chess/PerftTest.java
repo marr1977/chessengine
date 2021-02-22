@@ -1,9 +1,15 @@
 package martin.chess;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import martin.chess.engine.Board;
@@ -178,33 +184,41 @@ public class PerftTest {
 	}
 
 	private void verifyNumBoardStates(String fen, int depth, int numPos) {
-		Board board = new Board(fen);
-		board.setLogging(false);
-		board.validateMoves(false);
 		long start = System.currentTimeMillis();
-		Assert.assertEquals(numPos, getNumberOfPositions(board, depth, true));
+		try {
+			Assert.assertEquals(numPos, getNumberOfPositions(fen, depth));
+		}
+		catch (Exception e) {
+			throw new RuntimeException(e);
+		}
 		long end = System.currentTimeMillis();
 		System.out.println("Depth " + depth + " took " + (end - start) + " ms");
 	}
 	
-	private static int getNumberOfPositions(Board b, int depth, boolean log) {
-    	if (depth == 0) {
-    		return 1;
-    	}
-    	
-    	int numPositions = 0;
-    	
-    	for (Move move : b.getAvailableMoves()) {
-    		b.move(move);
-    		int positions = getNumberOfPositions(b, depth - 1, false);
-    		if (log) {
-    			System.out.println(move + ": " + positions);
+	private static int getNumberOfPositions(String fen, int depth) throws Exception {
+    	if (depth > 2) {
+    		int numThreads = Runtime.getRuntime().availableProcessors() - 1;
+    		ExecutorService executorService = Executors.newFixedThreadPool(numThreads);
+    		
+    		List<Future<Integer>> futures = new ArrayList<>();
+    		
+    		for (int i = 0; i < numThreads; i++) {
+    			BoardChecker checker = new BoardChecker(fen, depth, i, numThreads);
+    			futures.add(executorService.submit(checker));
     		}
-    		numPositions += positions;
-    		b.undoLastMove();
+    		
+    		int numPositions = 0;
+    		
+    		for (var future : futures) {
+    			numPositions += future.get();
+    		}
+    		
+    		return numPositions;
+    	} else {
+    		BoardChecker checker = new BoardChecker(fen, depth, 0, 1);
+    		return checker.call();
     	}
     	
-    	return numPositions;
 	}
 	
 	private Board checkBoardStates(String fen, int depth, String... moves) {
@@ -227,9 +241,68 @@ public class PerftTest {
 			}
 		}
 		System.out.println(FENNotation.toString(board));
-		getNumberOfPositions(board, depth, true);
+		try {
+			getNumberOfPositions(FENNotation.toString(board), depth);
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
 		return board;
 	}
+	
+	static class BoardChecker implements Callable<Integer> {
+
+		private String fen;
+		private int myThreadIdx;
+		private int numThreads;
+		private Board board;
+		private int depth;
+
+		public BoardChecker(String fen, int depth, int myThreadIdx, int numThreads) {
+			this.fen = fen;
+			this.depth = depth;
+			this.myThreadIdx = myThreadIdx;
+			this.numThreads = numThreads;
+		}
+
+		@Override
+		public Integer call() throws Exception {
+			board = new Board(fen);
+
+			board.setLogging(false);
+			board.validateMoves(false);
+			
+			return getNumberOfPositions(depth, true, true);
+		}
+		
+		private int getNumberOfPositions(int depth, boolean log, boolean filter) throws Exception {
+			if (depth == 0) {
+				return 1;
+			}
+			
+			int numPositions = 0;
+			List<Move> moves = board.getAvailableMoves();
+			
+			for (int i = 0; i < moves.size(); ++i) {
+	    		if (filter) {
+	    			if (i % numThreads != myThreadIdx) {
+	    				continue;
+	    			}
+	    		}
+	    		Move move = moves.get(i);
+	    		board.move(move);
+	    		int positions = getNumberOfPositions(depth - 1, false, false);
+	    		if (log) {
+	    			System.out.println(move + ": " + positions);
+	    		}
+	    		numPositions += positions;
+	    		board.undoLastMove();
+	    	}
+	    	
+	    	return numPositions;
+		}
+		
+	}
+	
 
 
 }
