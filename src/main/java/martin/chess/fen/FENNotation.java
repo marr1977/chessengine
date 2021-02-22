@@ -1,7 +1,12 @@
-package martin.chess.engine;
+package martin.chess.fen;
 
-import martin.chess.engine.Board.BoardState;
-import martin.chess.engine.Board.CastlingAbility;
+import martin.chess.engine.Algebraic;
+import martin.chess.engine.Board;
+import martin.chess.engine.Color;
+import martin.chess.engine.Piece;
+import martin.chess.engine.PieceType;
+import martin.chess.engine.state.BoardState;
+import martin.chess.engine.state.CastlingAbility;
 
 /**
  * https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation
@@ -11,7 +16,7 @@ public class FENNotation {
 
 	private static final int BOARD_SIZE = 8;
 	
-	static void initialize(Board theBoard, String fenString) {
+	public static void initialize(Board theBoard, String fenString) {
 		Piece[] board = theBoard.getBoard();
 		BoardState currentState = theBoard.getCurrentState();
 		
@@ -103,7 +108,7 @@ public class FENNotation {
 		i = nextSpace + 1;
 		
 		//Full move number
-		currentState.moveNumber = Integer.parseInt(fenString.substring(i));
+		currentState.moveNumber = Integer.parseInt(fenString.substring(i).trim());
 
 	}
 	
@@ -146,8 +151,8 @@ public class FENNotation {
 		
 		sb.append(" ").append(state.colorToMove == Color.WHITE ? "w" : "b").append(" ");
 		
-		CastlingAbility whiteCA = state.getColorData(Color.WHITE).castling;
-		CastlingAbility blackCA = state.getColorData(Color.BLACK).castling;
+		CastlingAbility whiteCA = state.getSideData(Color.WHITE).castling;
+		CastlingAbility blackCA = state.getSideData(Color.BLACK).castling;
 		
 		StringBuilder castlingString = new StringBuilder();
 		if (whiteCA.canCastleKingSide) {

@@ -14,4 +14,13 @@ public class Piece {
 	public String toString() {
 		return String.valueOf(type.getShortName(color));
 	}
+	
+	public Color getColor() {
+		return color;
+	}
+	
+	public PieceType getType() {
+		return type;
+	}
+
 }

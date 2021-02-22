@@ -4,8 +4,8 @@ import java.util.List;
 import java.util.Random;
 
 import martin.chess.engine.Board;
-import martin.chess.engine.FENNotation;
 import martin.chess.engine.Move;
+import martin.chess.fen.FENNotation;
 
 /**
  * Hello world!

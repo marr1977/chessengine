@@ -14,9 +14,9 @@ import org.junit.Test;
 import martin.chess.engine.Algebraic;
 import martin.chess.engine.Board;
 import martin.chess.engine.Color;
-import martin.chess.engine.FENNotation;
 import martin.chess.engine.GameResult;
 import martin.chess.engine.Move;
+import martin.chess.fen.FENNotation;
 
 /**
  * https://lichess.org/editor

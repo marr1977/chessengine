@@ -8,6 +8,8 @@ import martin.chess.engine.Color;
 import martin.chess.engine.GameManager;
 import martin.chess.engine.GameManager.ResultData;
 import martin.chess.strategy.IPlayerStrategy;
+import martin.chess.strategy.PieceValueStrategy;
+import martin.chess.strategy.PieceValueStrategy.ValuationMode;
 import martin.chess.strategy.RandomStrategy;
 
 public class FunStrategyTest {
@@ -18,6 +20,21 @@ public class FunStrategyTest {
 		testStrategies(10000, () -> new RandomStrategy(), () -> new RandomStrategy());
 	}
 	
+	@Test
+	public void randomVsPieceValueEndStateOnlyDepth3() {
+		testStrategies(10000, () -> new RandomStrategy(), () -> new PieceValueStrategy(ValuationMode.END_STATE_ONLY, 3, 2));
+	}
+	
+	@Test
+	public void PieceValueVsPieceValueDepth4Vs3() {
+		testStrategies(10000, () -> new PieceValueStrategy(ValuationMode.INTERMEDIATE_STATES_DECAY_90, 3, 3), () -> new PieceValueStrategy(ValuationMode.INTERMEDIATE_STATES_DECAY_90, 4, 3));
+	}
+	
+	@Test
+	public void randomVsPieceValueIntermediateDepth3() {
+		testStrategies(10000, () -> new RandomStrategy(), () -> new PieceValueStrategy(ValuationMode.INTERMEDIATE_STATES_DECAY_90, 4, 6));
+	}
+
 	private void testStrategies(int numGames, Supplier<IPlayerStrategy> whitePlayerSupplier, Supplier<IPlayerStrategy> blackPlayerSupplier) {
 		
 		int whiteWon = 0;

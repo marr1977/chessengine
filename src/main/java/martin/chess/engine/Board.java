@@ -9,6 +9,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import martin.chess.engine.state.BoardState;
+import martin.chess.engine.state.CastlingAbility;
+import martin.chess.engine.state.SideData;
+import martin.chess.fen.FENNotation;
+
 public class Board {
 	
 	private static final PieceType[] QUEENING_PIECES = new PieceType[] {
@@ -55,88 +60,6 @@ public class Board {
 	};
 	
 	/**
-	 * Represents a player's castling ability
-	 */
-	static class CastlingAbility {
-		public CastlingAbility() {
-		}
-		
-		public CastlingAbility(CastlingAbility from) {
-			canCastleKingSide = from.canCastleKingSide;
-			canCastleQueenSide = from.canCastleQueenSide;
-		}
-		
-		boolean canCastleKingSide;
-		boolean canCastleQueenSide;
-	}
-
-	/**
-	 * Represents the board state. Used for supporting undo of moves 
-	 */
-	static class BoardState {
-		public BoardState() {
-			 blackData = new ColorData();
-			 whiteData = new ColorData();
-		}
-		
-		public BoardState(BoardState from) {
-			this.colorToMove = from.colorToMove;
-			this.halfMoveClock = from.halfMoveClock;
-			this.moveNumber = from.moveNumber;
-			this.enPassantTargetIdx = from.enPassantTargetIdx;
-			
-			this.blackData = new ColorData(from.blackData);
-			this.whiteData = new ColorData(from.whiteData);
-		}
-		
-		Color colorToMove;
-		int enPassantTargetIdx = -1;
-		ColorData blackData;
-		ColorData whiteData;
-		Map<Integer, List<List<Integer>>> pinnedPieces = new HashMap<>();
-		int halfMoveClock;
-		int moveNumber;
-		
-		public ColorData getColorData(Color color) {
-			return color == Color.WHITE ? whiteData : blackData;
-		}
-	}
-	
-	/**
-	 * Represents data specific for each side
-	 */
-	static class ColorData {
-		boolean inCheck;
-		int kingIdx;
-		List<Set<Integer>> attackingPathsToMyKing;
-		Map<Integer, Set<Integer>> squaresAttackedByMe;
-		CastlingAbility castling;
-		
-		ColorData() {
-			clear();
-			castling = new CastlingAbility();
-		}
-		
-		ColorData(ColorData from) {
-			inCheck = from.inCheck;
-			attackingPathsToMyKing = new ArrayList<>(from.attackingPathsToMyKing);
-			squaresAttackedByMe = new HashMap<>(from.squaresAttackedByMe);
-			castling = new CastlingAbility(from.castling);
-			kingIdx = from.kingIdx;
-		}
-		
-		void clear() {
-			attackingPathsToMyKing = new ArrayList<>(24);
-			squaresAttackedByMe = new HashMap<>(128);
-			inCheck = false;
-		}
-
-		public String getAttackedSquares() {
-			return squaresAttackedByMe.entrySet().stream().map(i -> Algebraic.toAlgebraic(i.getKey())).collect(Collectors.joining(","));
-		}
-	}
-	
-	/**
 	 * Stored in the history log 
 	 */
 	private static class BoardHistoryEntry {
@@ -151,8 +74,6 @@ public class Board {
 	private Piece[] board = new Piece[64];
 	private BoardState currentState = new BoardState();
 
-	private Color winner;
-	private GameResult result;
 	private List<Move> availableMoves;
 
 	private boolean logging = true;
@@ -165,13 +86,15 @@ public class Board {
 	}
 	
 	public Board(String fenString) {
-		logInfo("Initializing from " + fenString);
+		//logInfo("Initializing from " + fenString);
 		FENNotation.initialize(this, fenString);
 		
 		currentState.blackData.kingIdx = findKingIdx(Color.BLACK);
 		currentState.whiteData.kingIdx = findKingIdx(Color.WHITE);
 		
 		addRepetitionData();
+		
+		currentState.updatePieceValues(board);
 		
 		updateAvailableMoves();
 	}
@@ -185,11 +108,11 @@ public class Board {
 	}
 
 	public GameResult getResult() {
-		return result;
+		return currentState.result;
 	}
 	
 	public Color getWinner() {
-		return winner;
+		return currentState.winner;
 	}
 	
 	public int getNumberOfMoves() {
@@ -308,8 +231,8 @@ public class Board {
 		
 		int opponentKingIdx = getKingIdx(color.getOpposite());
 		
-		ColorData myData = currentState.getColorData(color);
-		ColorData opponentData = currentState.getColorData(color.getOpposite());
+		SideData myData = currentState.getSideData(color);
+		SideData opponentData = currentState.getSideData(color.getOpposite());
 				
 		Map<Integer, Set<Integer>> inCheckSquares = new HashMap<>(64);
 		for (var move : inCheckMoves) {
@@ -361,7 +284,7 @@ public class Board {
 		case KING:
 			getMoves(moves, inCheckMoves, rank, file, piece, ALL_DIRECTIONS, true);
 			
-			CastlingAbility ca = currentState.getColorData(piece.color).castling;
+			CastlingAbility ca = currentState.getSideData(piece.color).castling;
 			
 			int kingRankToCastle = piece.color == Color.WHITE ? 0 : 7;
 			int kingFileToCastle = 4;
@@ -512,8 +435,8 @@ public class Board {
 		
 		Piece piece = board[move.idxFrom];
 
-		ColorData myData = currentState.getColorData(piece.color);
-		ColorData opponentData = currentState.getColorData(piece.color.getOpposite());
+		SideData myData = currentState.getSideData(piece.color);
+		SideData opponentData = currentState.getSideData(piece.color.getOpposite());
 		
 		var attackedSquares = opponentData.squaresAttackedByMe;
 		var pathsToKing = myData.attackingPathsToMyKing;
@@ -611,7 +534,7 @@ public class Board {
 	}
 		
 	private int getKingIdx(Color color) {
-		int idx = currentState.getColorData(color).kingIdx;
+		int idx = currentState.getSideData(color).kingIdx;
 		if (idx == -1) {
 			throw new RuntimeException("No king!");
 		}
@@ -630,7 +553,7 @@ public class Board {
 		board[move.idxFrom] = historyEntry.originalPieceMoved;
 		
 		if (historyEntry.originalPieceMoved.type == PieceType.KING) {
-			currentState.getColorData(historyEntry.originalPieceMoved.color).kingIdx = move.idxFrom;
+			currentState.getSideData(historyEntry.originalPieceMoved.color).kingIdx = move.idxFrom;
 		}
 		
 		if (move.additionalIdxFrom != -1) {
@@ -645,7 +568,7 @@ public class Board {
 	}
 
 	public void move(Move move) {
-		if (result != null) {
+		if (currentState.result != null) {
 			throw new IllegalArgumentException("Game has ended");
 		}
 		
@@ -666,25 +589,22 @@ public class Board {
 		
 		if (availableMoves.size() == 0) {
 			if (isInCheck(currentState.colorToMove)) {
-				result = GameResult.CHECKMATE;
-				winner = currentState.colorToMove == Color.WHITE ? Color.BLACK : Color.WHITE;
+				currentState.result = GameResult.CHECKMATE;
+				currentState.winner = currentState.colorToMove == Color.WHITE ? Color.BLACK : Color.WHITE;
 			} else {
-				result = GameResult.STALEMATE;
+				currentState.result = GameResult.STALEMATE;
 			}
+		} 
+		else if (isInsufficientMaterial()) {
+			currentState.result = GameResult.DRAW_INSUFFICIENT_MATERIAL;
 		}
-		
-		if (isInsufficientMaterial()) {
-			result = GameResult.DRAW_INSUFFICIENT_MATERIAL;
-		}
-		
 		// Automatic draw for three repetitions, normally you should ask the player
-		if (isRepetition(3)) {
-			result = GameResult.DRAW_THREEFOLD_REPETITION;
+		else if (isRepetition(3)) {
+			currentState.result = GameResult.DRAW_THREEFOLD_REPETITION;
 		}
-
 		// Automatic draw for 50-move rule, normally you should ask the player
-		if (currentState.halfMoveClock >= 100) {
-			result = GameResult.DRAW_FIFTY_MOVE_RULE;
+		else if (currentState.halfMoveClock >= 100) {
+			currentState.result = GameResult.DRAW_FIFTY_MOVE_RULE;
 		}
 	}
 	
@@ -695,6 +615,10 @@ public class Board {
 		if (logging) {
 			logInfo("Performing move " + move + " in state: " + getState());
 		}
+		
+		//
+		// Update board
+		//
 		
 		int oldRank = move.idxFrom / 8;
 		int oldFile = move.idxFrom % 8;
@@ -744,6 +668,10 @@ public class Board {
 			board[move.additionalIdxTo] = additionalPiece;
 		}
 		
+		//
+		// Push current state to history stack
+		//
+		
 		BoardHistoryEntry historyEntry = new BoardHistoryEntry();
 		historyEntry.move = move;
 		historyEntry.originalPieceMoved = originalPieceMoved;
@@ -753,8 +681,12 @@ public class Board {
 		history.add(historyEntry);
 		
 		
+		//
+		// Update current state
+		//
+		
 		if (piece.type == PieceType.KING) {
-			currentState.getColorData(piece.color).kingIdx = move.idxTo;
+			currentState.getSideData(piece.color).kingIdx = move.idxTo;
 		}
 		
 		// Adjust half move clock
@@ -784,7 +716,7 @@ public class Board {
 		//
 		// Update castling ability
 		//
-		CastlingAbility ca = currentState.getColorData(currentState.colorToMove).castling;
+		CastlingAbility ca = currentState.getSideData(currentState.colorToMove).castling;
 		if (piece.type == PieceType.KING) {
 			ca.canCastleKingSide = false;
 			ca.canCastleQueenSide = false;
@@ -803,7 +735,15 @@ public class Board {
 			currentState.moveNumber++;
 		}
 		
+		if (move.queeningPiece != null || takenPiece != null) {
+			currentState.updatePieceValues(board);
+		}
+		
 		addRepetitionData();
+	}
+	
+	public int getPieceValue(Color color) {
+		return currentState.getSideData(color).pieceValue;
 	}
 
 	private void addRepetitionData() {
@@ -831,7 +771,7 @@ public class Board {
 	 * Returns true if the color is currently in check
 	 */
 	private boolean isInCheck(Color color) {
-		return currentState.getColorData(color).inCheck; 
+		return currentState.getSideData(color).inCheck; 
 	}
 
 	/**
@@ -948,7 +888,7 @@ public class Board {
 	
 	private void getMoves(List<Move> moves, List<Move> inCheckMoves, int rank, int file, Piece piece, int[][] directions, boolean oneStepOnly) {
 		int fromIdx = getArrayIdx(rank, file);
-		ColorData opponentData = currentState.getColorData(piece.color.getOpposite());
+		SideData opponentData = currentState.getSideData(piece.color.getOpposite());
 		
 		for (int[] vector : directions) {
 			
@@ -1166,11 +1106,11 @@ public class Board {
 		return sb.toString();
 	}
 	
-	BoardState getCurrentState() {
+	public BoardState getCurrentState() {
 		return currentState;
 	}
 	
-	Piece[] getBoard() {
+	public Piece[] getBoard() {
 		return board;
 	}
 
@@ -1183,6 +1123,6 @@ public class Board {
 	}
 
 	public String getAttackedSquares() {
-		return "By black: " + currentState.getColorData(Color.BLACK).getAttackedSquares() + "\nBy white: " + currentState.getColorData(Color.WHITE).getAttackedSquares();
+		return "By black: " + currentState.getSideData(Color.BLACK).getAttackedSquares() + "\nBy white: " + currentState.getSideData(Color.WHITE).getAttackedSquares();
 	}
 }
