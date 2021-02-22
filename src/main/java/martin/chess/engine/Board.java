@@ -161,6 +161,10 @@ public class Board {
 		updateAvailableMoves();
 	}
 	
+	public Color getColorToMove() {
+		return currentState.colorToMove;
+	}
+	
 	public List<Move> getAvailableMoves() {
 		return availableMoves;
 	}
