@@ -156,14 +156,14 @@ public class Board {
 		return false;
 	}
 
-	private Color getSquareColor(int rank, int file) {
+	public Color getSquareColor(int rank, int file) {
 		if (rank % 2 == 0) {
 			return file % 2 == 0 ? Color.BLACK : Color.WHITE;
 		}
 		return file % 2 == 1 ? Color.BLACK : Color.WHITE;
 	}
 	
-	private Color getSquareColor(Piece piece) {
+	public Color getSquareColor(Piece piece) {
 		for (int i = 0; i < board.length; ++i) {
 			if (board[i] == piece) {
 				int rank = i / 8;
@@ -181,7 +181,11 @@ public class Board {
 		System.out.println(string);
 	}
 
-	private int getArrayIdx(int rank, int file) {
+	public Piece pieceAt(int rank, int file) {
+		return board[getArrayIdx(rank, file)];
+	}
+	
+	public int getArrayIdx(int rank, int file) {
 		if (rank < 0 || rank > 7) {
 			return -1;
 		}

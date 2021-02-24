@@ -24,9 +24,23 @@
 		        <release>11</release>
 		    </configuration>
 		</plugin>
+		
+ 	   <plugin>
+	        <groupId>org.openjfx</groupId>
+	        <artifactId>javafx-maven-plugin</artifactId>
+	        <version>0.0.5</version>
+	        <configuration>
+	            <mainClass>martin.chess.ui.ChessUI</mainClass>
+	        </configuration>
+	    </plugin>
 	</plugins>
 </build>
   <dependencies>
+	  <dependency>
+	    <groupId>org.openjfx</groupId>
+	    <artifactId>javafx-controls</artifactId>
+	    <version>15.0.1</version>
+	  </dependency>
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>

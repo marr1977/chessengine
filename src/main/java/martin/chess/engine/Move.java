@@ -6,7 +6,7 @@ public class Move {
 	int idxFrom;
 	int idxTo;
 	
-	// Contains the rook data in a castleing move
+	// Contains the rook data in a castling move
 	int additionalIdxFrom = -1;
 	int additionalIdxTo = -1;
 	
