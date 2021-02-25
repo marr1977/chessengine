@@ -10,7 +10,7 @@ import java.util.concurrent.Future;
 
 import martin.chess.engine.Board;
 import martin.chess.engine.Color;
-import martin.chess.engine.GameResult;
+import martin.chess.engine.GameOutcome;
 import martin.chess.engine.Move;
 import martin.chess.fen.FENNotation;
 
@@ -150,8 +150,8 @@ public class PieceValueStrategy implements IPlayerStrategy {
 
 		private double getEndstateValueOrCurrentPieceValueDelta() {
 			if (board.getResult() != null) {
-				if (board.getResult() == GameResult.CHECKMATE) {
-					if (board.getWinner() == myColor) {
+				if (board.getResult().getOutcome() == GameOutcome.CHECKMATE) {
+					if (board.getResult().getWinner() == myColor) {
 						//System.out.println("Returning checkmate for me in leaf state " + FENNotation.toString(board));
 						return 10_000;
 					} else {

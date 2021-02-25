@@ -1,6 +1,6 @@
 package martin.chess.engine;
 
-public enum GameResult {
+public enum GameOutcome {
 	CHECKMATE,
 	STALEMATE, 
 	DRAW_INSUFFICIENT_MATERIAL,

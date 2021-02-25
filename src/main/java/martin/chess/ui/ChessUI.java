@@ -12,50 +12,40 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
-import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
-import martin.chess.engine.Board;
+import martin.chess.engine.Color;
+import martin.chess.engine.GameResultData;
+import martin.chess.ui.BoardDrawer.GameListener;
 
-public class ChessUI extends Application {
+public class ChessUI extends Application implements GameListener {
     
-    private Scene playingScene;
-    private Scene introScene;
+    private static final String START_GAME = "Start game";
+	private static final String RESET_GAME = "Reset game";
+	private Scene playingScene;
 	private ComboBox<PlayerType> whitePlayer;
 	private ComboBox<PlayerType> blackPlayer;
-	private Stage primaryStage;
-	private Board board;
 	private Canvas boardCanvas;
 	private BoardDrawer boardDrawer;
+	private Button startGameButton;
+	private Label resultLabel;
+	private Label resultValueLabel;
+	
+	public static void main(String[] args) {
+        launch(args);
+    }
 
 	@Override
     public void start(Stage primaryStage) {
-        this.primaryStage = primaryStage;
         
         createPlayingScene();
         
-    	board = new Board();
-    	boardDrawer = new BoardDrawer(board, boardCanvas, true);
+    	boardDrawer = new BoardDrawer(boardCanvas, this);
     	
         primaryStage.setTitle("Martin's Crappy Chess");
         primaryStage.setScene(playingScene);
         primaryStage.show();
     }
-
-	private enum PlayerType {
-		Human("Human"),
-		RandomRobby("Random Robby");
-		
-		private String name;
-
-		private PlayerType(String name) {
-			this.name = name;
-		}
-		@Override
-		public String toString() {
-			return name;
-		}
-	}
 	
     private void createPlayingScene() {
 		boardCanvas = new Canvas();
@@ -63,7 +53,7 @@ public class ChessUI extends Application {
 		boardCanvas.setHeight(720);
 		
 		GridPane grid = new GridPane();
-		grid.setAlignment(Pos.CENTER);
+		grid.setAlignment(Pos.TOP_LEFT);
 		grid.setHgap(10);
 		grid.setVgap(10);
 		grid.setPadding(new Insets(25, 25, 25, 25));
@@ -72,27 +62,37 @@ public class ChessUI extends Application {
 		
 		whitePlayer = new ComboBox<PlayerType>();
 		whitePlayer.getItems().addAll(PlayerType.values());
+		whitePlayer.getSelectionModel().select(PlayerType.Human);
 		grid.add(whitePlayer, 1, 0);
 		
 		grid.add(new Label("Black: "), 0, 1);
 		
 		blackPlayer = new ComboBox<PlayerType>();
 		blackPlayer.getItems().addAll(PlayerType.values());
+		blackPlayer.getSelectionModel().select(PlayerType.RandomRobby);
 		grid.add(blackPlayer, 1, 1);
-
-		Button btn = new Button("Start game");
-		btn.setOnAction(new EventHandler<ActionEvent>() {
+		
+		startGameButton = new Button(START_GAME);
+		startGameButton.setOnAction(new EventHandler<ActionEvent>() {
 			 
 		    @Override
 		    public void handle(ActionEvent e) {
-		    	startGame();
+		    	if (startGameButton.getText().equals(RESET_GAME)) {
+		    		onGameStopped();
+		    		boardDrawer.resetGame();
+		    	} else {
+		    		startGame();
+		    	}
 		    }
 		});
 		
-		HBox hbBtn = new HBox(10);
-		hbBtn.setAlignment(Pos.BOTTOM_RIGHT);
-		hbBtn.getChildren().add(btn);
-		grid.add(hbBtn, 1, 2);
+		grid.add(startGameButton, 1, 2);
+
+		resultLabel = new Label("Result");
+		resultValueLabel = new Label("");
+
+		grid.add(resultLabel, 0, 3);
+		grid.add(resultValueLabel, 1, 3);
 		
 		VBox vbox = new VBox();
 		
@@ -108,10 +108,35 @@ public class ChessUI extends Application {
 	}
 
     private void startGame() {
+    	boardDrawer.startGame(whitePlayer.getValue(), blackPlayer.getValue());
 
+    	whitePlayer.setDisable(true);
+		blackPlayer.setDisable(true);
+		startGameButton.setText(RESET_GAME);
+		
 	}
 
-	public static void main(String[] args) {
-        launch(args);
-    }
+	private void onGameStopped() {
+		whitePlayer.setDisable(false);
+		blackPlayer.setDisable(false);
+		startGameButton.setText(START_GAME);
+	}
+
+	@Override
+	public void onGameEnded(GameResultData result) {
+		resultValueLabel.setText(getResultText(result));
+		onGameStopped();
+	}
+
+	private String getResultText(GameResultData result) {
+		switch (result.getOutcome()) {
+		case CHECKMATE: 					return (result.getWinner() == Color.BLACK ? "Black" : "White") + " wins"; 
+		case DRAW_FIFTY_MOVE_RULE:			return "Draw - 50-move rule";
+		case DRAW_INSUFFICIENT_MATERIAL: 	return "Draw - Insufficient material";
+		case DRAW_THREEFOLD_REPETITION:		return "Draw - Threefold repetition";
+		case STALEMATE:						return "Stalemate";
+		default:
+			return "?";
+		}
+	}
 }

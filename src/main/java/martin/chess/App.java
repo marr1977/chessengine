@@ -94,8 +94,6 @@ public class App
     	
     	System.out.println("End state:" + FENNotation.toString(b));
     	System.out.println("End board:" + b);
-    	System.out.println("Result:" + b.getResult());
-    	System.out.println("Winner:" + b.getWinner());
     	System.out.println("Number of moves:" + b.getNumberOfMoves());
     }
 

@@ -1,5 +1,9 @@
-package martin.chess.engine;
+package martin.chess;
 
+import martin.chess.engine.Board;
+import martin.chess.engine.Color;
+import martin.chess.engine.GameResultData;
+import martin.chess.engine.Move;
 import martin.chess.strategy.IPlayerStrategy;
 
 public class GameManager {
@@ -14,7 +18,7 @@ public class GameManager {
 		this.blackPlayer = blackPlayer;
 	}
 	
-	public ResultData startGame() {
+	public GameResultData startGame() {
 		board = new Board();
 		board.setLogging(logging);
 		
@@ -32,39 +36,18 @@ public class GameManager {
 			board.move(move);
 		}
 		
-		if (board.getWinner() != null) {
-			System.out.println(board.getWinner() + " won");
+		if (board.getResult().getWinner() != null) {
+			System.out.println(board.getResult().getWinner() + " won");
 		} else {
 			System.out.println("Draw: " + board.getResult());
 		}
 		
-		return new ResultData(board.getWinner(), board.getResult(), board.getNumberOfMoves());
+		return board.getResult();
 	}
 
 	public void setLogging(boolean logging) {
 		this.logging = logging;
 	}
 	
-	public static class ResultData {
-		private Color winner;
-		private GameResult result;
-		private int numberOfMoves;
-		
-		private ResultData(Color winner, GameResult result, int numberOfMoves) {
-			this.winner = winner;
-			this.result = result;
-			this.numberOfMoves = numberOfMoves;
-		}
-		
-		public Color getWinner() {
-			return winner;
-		}
-		public GameResult getResult() {
-			return result;
-		}
-		public int getNumberOfMoves() {
-			return numberOfMoves;
-		}
-	}
 	
 }

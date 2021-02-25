@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 import martin.chess.engine.Color;
-import martin.chess.engine.GameResult;
+import martin.chess.engine.GameResultData;
 import martin.chess.engine.Piece;
 
 public class BoardState {
@@ -16,8 +16,7 @@ public class BoardState {
 	public Map<Integer, List<List<Integer>>> pinnedPieces = new HashMap<>();
 	public int halfMoveClock;
 	public int moveNumber;
-	public Color winner;
-	public GameResult result;
+	public GameResultData result;
 
 	public BoardState() {
 		 blackData = new SideData();
@@ -32,7 +31,6 @@ public class BoardState {
 		
 		this.blackData = new SideData(from.blackData);
 		this.whiteData = new SideData(from.whiteData);
-		this.winner = from.winner;
 		this.result = from.result;
 	}
 	

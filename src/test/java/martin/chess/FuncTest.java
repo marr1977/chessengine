@@ -14,7 +14,7 @@ import org.junit.Test;
 import martin.chess.engine.Algebraic;
 import martin.chess.engine.Board;
 import martin.chess.engine.Color;
-import martin.chess.engine.GameResult;
+import martin.chess.engine.GameOutcome;
 import martin.chess.engine.Move;
 import martin.chess.fen.FENNotation;
 
@@ -451,8 +451,8 @@ public class FuncTest {
 		
 		board.move(new Move("b5e2"));
 		
-		Assert.assertEquals(GameResult.CHECKMATE, board.getResult());
-		Assert.assertEquals(Color.BLACK, board.getWinner());
+		Assert.assertEquals(GameOutcome.CHECKMATE, board.getResult());
+		Assert.assertEquals(Color.BLACK, board.getResult().getWinner());
 	}
 	
 	@Test
@@ -462,7 +462,7 @@ public class FuncTest {
 		
 		board.move(new Move("h8g8"));
 		
-		Assert.assertEquals(GameResult.DRAW_INSUFFICIENT_MATERIAL, board.getResult());
+		Assert.assertEquals(GameOutcome.DRAW_INSUFFICIENT_MATERIAL, board.getResult());
 	}
 	
 	@Test
@@ -472,7 +472,7 @@ public class FuncTest {
 		
 		board.move(new Move("h8g8"));
 		
-		Assert.assertEquals(GameResult.DRAW_INSUFFICIENT_MATERIAL, board.getResult());
+		Assert.assertEquals(GameOutcome.DRAW_INSUFFICIENT_MATERIAL, board.getResult());
 	}
 	
 	@Test
@@ -482,7 +482,7 @@ public class FuncTest {
 		
 		board.move(new Move("h8g8"));
 		
-		Assert.assertEquals(GameResult.DRAW_INSUFFICIENT_MATERIAL, board.getResult());
+		Assert.assertEquals(GameOutcome.DRAW_INSUFFICIENT_MATERIAL, board.getResult());
 	}
 	
 	@Test
@@ -492,7 +492,7 @@ public class FuncTest {
 		
 		board.move(new Move("h8g8"));
 		
-		Assert.assertEquals(GameResult.DRAW_INSUFFICIENT_MATERIAL, board.getResult());
+		Assert.assertEquals(GameOutcome.DRAW_INSUFFICIENT_MATERIAL, board.getResult());
 	}
 	
 	@Test
@@ -535,7 +535,7 @@ public class FuncTest {
 		
 		// Now we are back to original state, state has occured three times
 		
-		Assert.assertEquals(GameResult.DRAW_THREEFOLD_REPETITION, board.getResult());
+		Assert.assertEquals(GameOutcome.DRAW_THREEFOLD_REPETITION, board.getResult());
 
 	}
 }

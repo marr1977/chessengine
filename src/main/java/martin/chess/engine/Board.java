@@ -107,12 +107,8 @@ public class Board {
 		return availableMoves;
 	}
 
-	public GameResult getResult() {
+	public GameResultData getResult() {
 		return currentState.result;
-	}
-	
-	public Color getWinner() {
-		return currentState.winner;
 	}
 	
 	public int getNumberOfMoves() {
@@ -593,25 +589,29 @@ public class Board {
 		
 		if (availableMoves.size() == 0) {
 			if (isInCheck(currentState.colorToMove)) {
-				currentState.result = GameResult.CHECKMATE;
-				currentState.winner = currentState.colorToMove == Color.WHITE ? Color.BLACK : Color.WHITE;
+				currentState.result = createResult(GameOutcome.CHECKMATE);
 			} else {
-				currentState.result = GameResult.STALEMATE;
+				currentState.result = createResult(GameOutcome.STALEMATE);
 			}
 		} 
 		else if (isInsufficientMaterial()) {
-			currentState.result = GameResult.DRAW_INSUFFICIENT_MATERIAL;
+			currentState.result = createResult(GameOutcome.DRAW_INSUFFICIENT_MATERIAL);
 		}
 		// Automatic draw for three repetitions, normally you should ask the player
 		else if (isRepetition(3)) {
-			currentState.result = GameResult.DRAW_THREEFOLD_REPETITION;
+			currentState.result = createResult(GameOutcome.DRAW_THREEFOLD_REPETITION);
 		}
 		// Automatic draw for 50-move rule, normally you should ask the player
 		else if (currentState.halfMoveClock >= 100) {
-			currentState.result = GameResult.DRAW_FIFTY_MOVE_RULE;
+			currentState.result = createResult(GameOutcome.DRAW_FIFTY_MOVE_RULE);
 		}
 	}
 	
+	private GameResultData createResult(GameOutcome outcome) {
+		boolean isDraw = outcome != GameOutcome.CHECKMATE;
+		return new GameResultData(isDraw ? null : currentState.colorToMove.getOpposite(), outcome, getNumberOfMoves());
+	}
+
 	/**
 	 * Performs the supplied move 
 	 */

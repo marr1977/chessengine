@@ -5,8 +5,7 @@ import java.util.function.Supplier;
 import org.junit.Test;
 
 import martin.chess.engine.Color;
-import martin.chess.engine.GameManager;
-import martin.chess.engine.GameManager.ResultData;
+import martin.chess.engine.GameResultData;
 import martin.chess.strategy.IPlayerStrategy;
 import martin.chess.strategy.PieceValueStrategy;
 import martin.chess.strategy.PieceValueStrategy.ValuationMode;
@@ -50,9 +49,9 @@ public class FunStrategyTest {
 			
 			GameManager mgr = new GameManager(whitePlayer, blackPlayer);
 			mgr.setLogging(false);
-			ResultData result = mgr.startGame();
+			GameResultData result = mgr.startGame();
 			
-			switch (result.getResult()) {
+			switch (result.getOutcome()) {
 			case CHECKMATE:
 				if (result.getWinner() == Color.WHITE) {
 					whiteWon++;
