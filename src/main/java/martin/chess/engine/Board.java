@@ -85,6 +85,10 @@ public class Board {
 		this("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 	}
 	
+	public Board(Board board) {
+		this(FENNotation.toString(board));
+	}
+
 	public Board(String fenString) {
 		//logInfo("Initializing from " + fenString);
 		FENNotation.initialize(this, fenString);
@@ -209,6 +213,10 @@ public class Board {
 		return getAvailableMoves(currentState.colorToMove, true);
 	}
 	
+	public void setColorToMove(Color colorToMove) {
+		currentState.colorToMove = colorToMove;
+		updateAvailableMoves();
+	}
 	
 	/**
 	 * Gets the list of playable moves for the given color. 
@@ -1130,7 +1138,12 @@ public class Board {
 		this.validateMoves = validateMoves;
 	}
 
+	public Map<Integer, Set<Integer>> getAttackedSquares(Color color) {
+		return currentState.getSideData(color).squaresAttackedByMe;
+	}
+	
 	public String getAttackedSquares() {
 		return "By black: " + currentState.getSideData(Color.BLACK).getAttackedSquares() + "\nBy white: " + currentState.getSideData(Color.WHITE).getAttackedSquares();
 	}
+
 }

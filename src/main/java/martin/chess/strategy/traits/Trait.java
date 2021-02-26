@@ -6,6 +6,8 @@ import martin.chess.engine.Move;
 
 public interface Trait {
 
+	default void initialize(Board boardBefore) {}
+	
 	public double vote(Color ourColor, Board boardBefore, Board boardAfter, Move m);
 
 	default public String getName() {

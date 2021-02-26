@@ -49,6 +49,8 @@ public class TraitStrategy implements IPlayerStrategy {
 		
 		List<Move> moves = board.getAvailableMoves();
 		
+		traits.forEach(t -> t.first.initialize(board));
+		
 		for (var move : moves) {
 			clonedBoard.move(move);
 			
