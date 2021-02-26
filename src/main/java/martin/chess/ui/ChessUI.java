@@ -69,7 +69,7 @@ public class ChessUI extends Application implements GameListener {
 		
 		blackPlayer = new ComboBox<PlayerType>();
 		blackPlayer.getItems().addAll(PlayerType.values());
-		blackPlayer.getSelectionModel().select(PlayerType.RandomRobby);
+		blackPlayer.getSelectionModel().select(PlayerType.Trait1);
 		grid.add(blackPlayer, 1, 1);
 		
 		startGameButton = new Button(START_GAME);

@@ -80,7 +80,7 @@ public class Board {
 	private boolean validateMoves = true;
 	
 	private Map<String, Integer> repetitionData = new HashMap<>();
-	
+
 	public Board() {
 		this("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 	}
@@ -175,6 +175,10 @@ public class Board {
 			return;
 		}
 		System.out.println(string);
+	}
+
+	public Piece pieceAt(int idx) {
+		return board[idx];
 	}
 
 	public Piece pieceAt(int rank, int file) {

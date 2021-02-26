@@ -9,11 +9,15 @@ import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.image.Image;
 import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
+import javafx.scene.text.TextAlignment;
 import martin.chess.engine.Board;
 import martin.chess.engine.GameResultData;
 import martin.chess.engine.Move;
 import martin.chess.engine.Piece;
 import martin.chess.engine.PieceType;
+import martin.chess.strategy.BalancedTraitStrategy;
 import martin.chess.strategy.IPlayerStrategy;
 import martin.chess.strategy.RandomStrategy;
 import martin.chess.ui.DragAndDropDetector.DragAndDropHandler;
@@ -59,6 +63,10 @@ public class BoardDrawer implements DragAndDropHandler {
 	private boolean gameInProgress = false;
 	
 	private GameListener gameListener;
+	private Font font;
+	
+	private static final String[] RANKS = new String[] { "1", "2", "3", "4", "5", "6", "7", "8" };
+	private static final String[] FILES = new String[] { "a", "b", "c", "d", "e", "f", "g", "h" };
 	
 	public BoardDrawer(Canvas boardCanvas, GameListener gameListener) {
 		this.boardCanvas = boardCanvas;
@@ -77,6 +85,8 @@ public class BoardDrawer implements DragAndDropHandler {
 		dotOffset = (squareSize - dotSize) / 2;
 		pieceOffset = (squareSize - pieceImageWidth) / 2;
 		
+		font = Font.font("Arial", FontWeight.BOLD, 14);
+		
 		drawBoard();
 	}
 
@@ -92,6 +102,7 @@ public class BoardDrawer implements DragAndDropHandler {
 		switch (playerType) {
  			case Human:			return null;
  			case RandomRobby:	return new RandomStrategy();
+ 			case Trait1:		return new BalancedTraitStrategy();
 		
 		}
 		throw new IllegalArgumentException("Unknown player type: " + playerType);
@@ -128,6 +139,20 @@ public class BoardDrawer implements DragAndDropHandler {
 				} else if (isSquareAvailable(rank, file)) {
 					gc.setFill(isDarkSquare ? DARK_DOT : LIGHT_DOT);
 					gc.fillOval(topLeftX + dotOffset, topLeftY + dotOffset, dotSize, dotSize);
+				}
+				
+				if (rank == 0) {
+					gc.setTextAlign(TextAlignment.RIGHT);
+					gc.setFill(isDarkSquare ? LIGHT_SQUARE_COLOR : DARK_SQUARE_COLOR);
+					gc.setFont(font);
+					gc.fillText(FILES[file], topLeftX + squareSize - 3, topLeftY + squareSize - 3);
+				}
+				
+				if (file == 0) {
+					gc.setTextAlign(TextAlignment.LEFT);
+					gc.setFill(isDarkSquare ? LIGHT_SQUARE_COLOR : DARK_SQUARE_COLOR);
+					gc.setFont(font);
+					gc.fillText(RANKS[rank], topLeftX + 3, topLeftY + 3 + font.getSize());
 				}
 			}
 		}
@@ -209,7 +234,6 @@ public class BoardDrawer implements DragAndDropHandler {
 		dragOffsetX = -offsetIntoSquareX;
 		dragOffsetY = -offsetIntoSquareY;
 		
-		System.out.println("Started dragging " + piece);
 		draggedPiece = piece;
 		
 		dragFromIdx = board.getArrayIdx(rank, file);
@@ -223,7 +247,7 @@ public class BoardDrawer implements DragAndDropHandler {
 			}
 		}
 		System.out.println("Moves: " + availableMoves);
-		System.out.println("All moves: " + board.getAvailableMoves());
+		System.out.println("All moves: " + board.getAvailableMoves() + "\n");
 		
 		drawBoard();
 	}

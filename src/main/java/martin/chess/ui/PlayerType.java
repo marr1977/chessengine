@@ -2,7 +2,8 @@ package martin.chess.ui;
 
 public enum PlayerType {
 	Human("Human"),
-	RandomRobby("Random Robby");
+	RandomRobby("Random Robby"),
+	Trait1("Balanced trait strategy");
 	
 	private String name;
 

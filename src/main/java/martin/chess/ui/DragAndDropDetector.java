@@ -33,8 +33,6 @@ public class DragAndDropDetector {
 	}
 	
 	private void onMouseDragged(MouseEvent e) {
-		//System.out.println("Mouse dragged at " + e.getX() + ", " + e.getY());
-		
 		x = e.getX();
 		y = e.getY();
 		
@@ -48,8 +46,6 @@ public class DragAndDropDetector {
 
 
 	private void onMouseReleased(MouseEvent e) {
-		System.out.println("Mouse release detected at " + e.getX() + ", " + e.getY());
-		
 		x = e.getX();
 		y = e.getY();
 		

@@ -3,7 +3,6 @@ package martin.chess;
 import org.junit.Test;
 
 import martin.chess.engine.Board;
-import martin.chess.engine.Color;
 import martin.chess.engine.Move;
 import martin.chess.strategy.PieceValueStrategy;
 import martin.chess.strategy.PieceValueStrategy.ValuationMode;
