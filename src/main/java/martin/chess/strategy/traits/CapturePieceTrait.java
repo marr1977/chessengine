@@ -7,7 +7,7 @@ import martin.chess.engine.Move;
 /**
  * Prefers a move that will capture a piece, the higher value the better
  */
-public class CapturePieceTrait implements Trait {
+public class CapturePieceTrait extends Trait {
 
 	@Override
 	public double vote(Color ourColor, Board boardBefore, Board boardAfter, Move m) {

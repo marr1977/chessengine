@@ -1,16 +1,26 @@
 package martin.chess.strategy.traits;
 
+import java.util.concurrent.ExecutorService;
+
 import martin.chess.engine.Board;
 import martin.chess.engine.Color;
 import martin.chess.engine.Move;
 
-public interface Trait {
-
-	default void initialize(Board boardBefore) {}
+public abstract class Trait {
 	
-	public double vote(Color ourColor, Board boardBefore, Board boardAfter, Move m);
+	protected ExecutorService executorService;
+	
+	public void setExecutorService(ExecutorService executorService) {
+		this.executorService = executorService;
+	}
 
-	default public String getName() {
+	public void initialize(Board boardBefore) {
+	}
+	
+	public abstract double vote(Color ourColor, Board boardBefore, Board boardAfter, Move m);
+
+	@Override
+	public String toString() {
 		String name = getClass().getSimpleName();
 		return name.endsWith("Trait") ? name.substring(0, name.length() - 5) : name;
 	}

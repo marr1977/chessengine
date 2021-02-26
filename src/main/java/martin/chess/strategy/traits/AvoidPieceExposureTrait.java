@@ -11,9 +11,10 @@ import martin.chess.engine.Piece;
 /**
  * If a piece is exposed, try to remove it 
  */
-public class AvoidPieceExposureTrait implements Trait {
+public class AvoidPieceExposureTrait extends Trait {
 	
 	private Set<Integer> attackedIndexes;
+	
 	@Override
 	public void initialize(Board boardBefore) {
 		Board b = new Board(boardBefore);

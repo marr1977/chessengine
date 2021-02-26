@@ -39,7 +39,7 @@ public class GameManager {
 		if (board.getResult().getWinner() != null) {
 			System.out.println(board.getResult().getWinner() + " won");
 		} else {
-			System.out.println("Draw: " + board.getResult());
+			System.out.println("Draw: " + board.getResult().getOutcome());
 		}
 		
 		return board.getResult();

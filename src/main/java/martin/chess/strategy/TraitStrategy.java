@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.ExecutorService;
 
 import martin.chess.engine.Board;
 import martin.chess.engine.Color;
@@ -20,17 +21,34 @@ public class TraitStrategy implements IPlayerStrategy {
 	private Random random;
 
 	private static final double MIN_MOVE_VALUE = 1;
-	private static final boolean DEBUG = true;
+	private static final boolean DEBUG = false;
 	private static final int MOVES_TO_DEBUG = 5;
 
 	private double exp;
+
+	private ExecutorService executorService;
 	
 	public TraitStrategy(double exp) {
 		this.exp = exp;
 		random = new Random();
 	}
 	
+	public TraitStrategy(double exp, ExecutorService executorService) {
+		this(exp);
+		this.executorService = executorService;
+	}
+
+	public double getExponent() {
+		return exp;
+	}
+	
+	public List<Pair<Trait, Double>> getTraits() {
+		return traits;
+	}
+	
 	public void addTrait(Trait trait, double weight) {
+		trait.setExecutorService(executorService);
+		
 		traits.add(new Pair<>(trait, weight));
 	}
 	
@@ -60,8 +78,16 @@ public class TraitStrategy implements IPlayerStrategy {
 			moveAndValue.value = MIN_MOVE_VALUE;
 			
 			for (var trait : traits) {
-				double traitVote = Math.pow(trait.second * trait.first.vote(ourColor, board, clonedBoard, move), exp);
-				moveAndValue.votes.put(trait.first.getName(), traitVote);
+				double traitVoteBase = trait.first.vote(ourColor, board, clonedBoard, move);
+				boolean isNegative = traitVoteBase < 0;
+				
+				if (isNegative) traitVoteBase = -traitVoteBase;
+				
+				double traitVote = Math.pow(trait.second * traitVoteBase, exp);
+				
+				if (isNegative) traitVote = -traitVote;
+				
+				moveAndValue.votes.put(trait.first.toString(), traitVote);
 				moveAndValue.value += traitVote;
 			}
 			
@@ -118,16 +144,6 @@ public class TraitStrategy implements IPlayerStrategy {
 		return moveValues.get(0).move;
 	}
 
-	private static class Pair<T, V> {
-		T first;
-		V second;
-		
-		public Pair(T first, V second) {
-			this.first = first;
-			this.second = second;
-		}
-	}
-	
 	private static class MoveAndValue implements Comparable<MoveAndValue> {
 		Move move;
 		double value;
@@ -146,5 +162,10 @@ public class TraitStrategy implements IPlayerStrategy {
 		public int compareTo(MoveAndValue o) {
 			return -Double.compare(value, o.value);
 		}
+	}
+	
+	@Override
+	public String toString() {
+		return String.format("Exp = %f, Traits = %s", exp, traits);
 	}
 }

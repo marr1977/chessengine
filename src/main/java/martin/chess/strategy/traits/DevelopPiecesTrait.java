@@ -4,7 +4,7 @@ import martin.chess.engine.Board;
 import martin.chess.engine.Color;
 import martin.chess.engine.Move;
 
-public class DevelopPiecesTrait implements Trait {
+public class DevelopPiecesTrait extends Trait {
 
 	@Override
 	public double vote(Color ourColor, Board boardBefore, Board boardAfter, Move m) {

@@ -8,7 +8,7 @@ import martin.chess.engine.Piece;
 /**
  * Avoids moves that would expose a piece to an enemy attacker
  */
-public class DontPlacePieceInExposureTrait implements Trait {
+public class DontPlacePieceInExposureTrait extends Trait {
 
 	@Override
 	public double vote(Color ourColor, Board boardBefore, Board boardAfter, Move m) {
@@ -19,7 +19,7 @@ public class DontPlacePieceInExposureTrait implements Trait {
 		long piecesAttackingMyPiece = 0;
 		for (var move : boardAfter.getAvailableMoves()) {
 			if (move.getIdxTo() == m.getIdxTo()) {
-				System.out.println(move + " would attack my " + piece.toString() + " move " + m);
+				//System.out.println(move + " would attack my " + piece.toString() + " move " + m);
 				piecesAttackingMyPiece++;
 			}
 		}

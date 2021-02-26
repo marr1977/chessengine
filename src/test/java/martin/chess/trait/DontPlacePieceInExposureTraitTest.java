@@ -12,6 +12,25 @@ public class DontPlacePieceInExposureTraitTest {
 	DontPlacePieceInExposureTrait trait = new DontPlacePieceInExposureTrait();
 	
 	@Test
+	public void almostStartPos() {
+		Board boardBefore = new Board("rnbqkbnr/1ppppppp/8/p7/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1");
+
+		Board boardAfter = new Board(boardBefore);
+		boardAfter.validateMoves(false);
+		boardAfter.setLogging(false);
+		
+		trait.initialize(boardBefore);
+		System.out.println(boardBefore.getAvailableMoves());
+		for (Move move : boardBefore.getAvailableMoves()) {
+
+			boardAfter.move(move);
+			trait.vote(boardBefore.getColorToMove(), boardBefore, boardAfter, move);
+			boardAfter.undoLastMove();
+		}
+	}
+	
+
+	@Test
 	public void test() {
 		Board boardBefore = new Board("3rkn2/p2pp3/8/8/2p1n3/P5PP/1Q2R3/2K5 w - - 0 1");
 		

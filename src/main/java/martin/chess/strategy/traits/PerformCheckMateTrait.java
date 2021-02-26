@@ -7,7 +7,7 @@ import martin.chess.engine.Move;
 /**
  * Prefers a move that will cause a check mate
  */
-public class PerformCheckMateTrait implements Trait{
+public class PerformCheckMateTrait extends Trait{
 	
 	@Override
 	public double vote(Color ourColor, Board boardBefore, Board boardAfter, Move m) {
